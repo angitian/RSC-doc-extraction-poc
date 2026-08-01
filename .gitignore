@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+.venv/
+venv/
+.streamlit/secrets.toml
+.DS_Store
+Thumbs.db
+
+# Generated / local documents (do not push personal .docx)
+*.docx
+*.xlsx
+*.pdf

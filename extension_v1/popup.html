@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Doc to Smart Data Auto-Fill (v.1)</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 340px;
+      margin: 0;
+      padding: 14px;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 16px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+    .status-ready { background-color: #dcfce7; color: #15803d; }
+    .status-empty { background-color: #fef3c7; color: #b45309; }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      display: block;
+      margin-bottom: 4px;
+    }
+    textarea {
+      width: 100%;
+      height: 90px;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-sizing: border-box;
+      resize: vertical;
+      margin-bottom: 10px;
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    button {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn-primary {
+      background-color: #2563eb;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #1d4ed8;
+    }
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background-color: #cbd5e1;
+    }
+    .log-box {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #64748b;
+      max-height: 60px;
+      overflow-y: auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h3>📄 Doc to Smart Data (v.1)</h3>
+  <div id="status-tag" class="status-badge status-empty">ยังไม่มีข้อมูล JSON</div>
+
+  <label for="json-input">ข้อมูล JSON จาก app_v1.py:</label>
+  <textarea id="json-input" placeholder="วางข้อมูล JSON ที่คัดลอกมาจาก app_v1.py หรือกดดึงข้อมูลจากคลิปบอร์ด..."></textarea>
+
+  <div class="btn-group">
+    <button id="btn-paste" class="btn-secondary">📋 วางข้อมูลจากคลิปบอร์ด (Paste)</button>
+    <button id="btn-fill" class="btn-primary">⚡ กรอกฟอร์มหน้าเว็บปลายทาง (Auto-Fill)</button>
+  </div>
+
+  <div id="log-message" class="log-box">พร้อมใช้งาน</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

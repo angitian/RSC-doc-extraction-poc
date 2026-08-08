@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Doc to Smart Data Auto-Fill (v.1)",
+  "version": "1.0.0",
+  "description": "Chrome Extension สำหรับดึงข้อมูลที่สกัดจาก app_v1.py ไปกรอกลงฟอร์มบนเว็บไซต์ปลายทางอัตโนมัติ",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "contextMenus",
+    "clipboardRead"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Doc to Smart Data Auto-Fill"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

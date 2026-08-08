@@ -13,3 +13,17 @@ Thumbs.db
 *.docx
 *.xlsx
 *.pdf
+
+# Extension build artifacts
+*.crx
+*.pem
+
+# Backup / old versions
+app_v1.py
+
+# HTML exports
+RSC Smart Approval*.html
+RSC Smart Approval*_files/
+
+# Prompt / internal docs
+PROMPT_BUILD_POC*.md

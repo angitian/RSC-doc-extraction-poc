@@ -14,9 +14,11 @@ multipart/form-data:
 
 | field | ประเภท | ค่า |
 |---|---|---|
-| `file` | File | `.docx` หรือ `.pdf` (สูงสุด 20 MB) |
+| `file` | File | `.docx` / `.pdf` / `.xlsx` (สูงสุด 20 MB) |
 | `mode` | string | `full_table` (default) \| `annex_pdf` |
 | `target_url` | string | URL หน้าปัจจุบันของเว็บราชการ (ใช้แมป field_mappings) |
+| `doc_type` | string | (optional) override ชนิดเอกสาร — ข้าม auto-classify |
+| `page_snapshot` | string | (optional) JSON array ของ `[{id, name, type, label}]` — ใช้ resolve ฟอร์มด้วย DOM signature |
 
 ### Response (200) — `ExtractionResponse`
 
@@ -56,6 +58,9 @@ multipart/form-data:
 }
 ```
 
+Response เพิ่มเติม (v2.1): `form_type`, `profile_id`, `profile_name`, `page_match_confidence`,
+`editable_fields` (`[{key, label, type, value}]` — ใช้กับ Editable Review Card)
+
 ### Errors
 
 | status | กรณี |
@@ -63,6 +68,28 @@ multipart/form-data:
 | 400 | mode ไม่ถูกต้อง / ไฟล์ว่าง / ประเภทไฟล์ไม่รองรับ |
 | 413 | ไฟล์ใหญ่เกิน 20 MB |
 | 422 | อ่านไฟล์ไม่สำเร็จ (เสียหาย / ไม่ใช่ docx-pdf จริง) |
+
+## `GET /api/v1/forms`
+
+รายการฟอร์ม (profile) ที่ลงทะเบียน + schema ฟิลด์ — ใช้กับ Quick Form
+
+## `POST /api/v1/fill`
+
+Quick Form — ไม่ต้องมีเอกสาร:
+
+```json
+{
+  "profile_id": "rsc_conference",
+  "target_url": "https://...",
+  "page_snapshot": [{"id": "..."}],
+  "values": { "event_title": "...", "per_diem": 200, "...": "..." }
+}
+```
+→ คืน `ExtractionResponse` (field_mappings พร้อมยิง)
+
+## `GET /api/v1/templates/{profile_id}`
+
+ดาวน์โหลด Excel template (.xlsx) — คอลัมน์ A = ป้ายฟิลด์, B = ค่า (กรอกแล้วอัปโหลดกลับผ่าน `/api/v1/extract`)
 
 ## DOMAction — คำสั่งที่ Content Script รองรับ
 
@@ -78,5 +105,7 @@ multipart/form-data:
 
 ฟิลด์เพิ่มเติม:
 - `label` (string) — **ป้ายภาษาไทยของฟิลด์** เช่น `"วัตถุประสงค์"`, `"ชื่อโครงการ/โครงการย่อย"`, `"วงเงินรวม (บาท)"` — Content Script ใช้เป็นตัวชี้หลักสำรอง: ถ้า CSS selector หาไม่เจอ (React auto-ID เช่น `input-94`/`textarea-19` เปลี่ยนทุก build) จะหา element จาก label (`label[for]` → label ครอบ → aria-label/placeholder) แทน
+- `key` (string) — metadata key ที่ค่ามาจาก — Side Panel ใช้แทนค่าจาก Editable Review Card ก่อนยิง
+- `skip_if_value_present` (bool) — ถ้า element มีค่าอยู่แล้ว (เว็บเติมเองจากโปรไฟล์/ACC) ให้ข้ามไม่ทับ
 - `meta.scope_name` — ใช้กับ radio โดยเฉพาะ เพื่อแยกกลุ่ม เช่น `"expense-document-source"` กับ `"schedule-document-source"`
 - `index` (เลือก element ลำดับที่ N), `repeat` (ทำซ้ำ เช่น คลิกเพิ่มแถว), `delay_ms`

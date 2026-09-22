@@ -35,8 +35,8 @@
   <!-- Drop zone -->
   <section id="drop-zone" class="drop-zone" tabindex="0">
     <div class="dz-icon">📂</div>
-    <p><b>ลากไฟล์ .docx / .pdf มาวาง</b><br/>หรือคลิกเพื่อเลือกไฟล์</p>
-    <input id="file-input" type="file" accept=".docx,.pdf" hidden />
+    <p><b>ลากไฟล์ .docx / .pdf / .xlsx มาวาง</b><br/>หรือคลิกเพื่อเลือกไฟล์</p>
+    <input id="file-input" type="file" accept=".docx,.pdf,.xlsx" hidden />
   </section>
 
   <!-- Mode selector -->
@@ -52,13 +52,26 @@
     </label>
   </section>
 
-  <!-- Review card -->
+  <!-- Quick Form (B) — กรอกตรงๆ ไม่ต้องมีเอกสาร -->
+  <details id="quick-form" class="card">
+    <summary>⚡ กรอกด่วน (Quick Form) — ไม่ต้องใช้เอกสาร</summary>
+    <div class="qf-body">
+      <label for="qf-profile">เลือกฟอร์มปลายทาง</label>
+      <select id="qf-profile"></select>
+      <button id="btn-load-template" class="btn btn-ghost" type="button">📥 ดาวน์โหลด Excel template</button>
+      <div id="qf-fields"></div>
+      <button id="btn-quick-fill" class="btn btn-primary" type="button">🚀 กรอกลงแบบฟอร์ม (Quick)</button>
+    </div>
+  </details>
+
+  <!-- Review card (A — editable) -->
   <section id="review-card" class="card hidden">
     <div class="rc-head">
       <h2>ตรวจสอบข้อมูลก่อนยิง</h2>
       <span id="rc-type" class="pill pill-blue"></span>
     </div>
-    <div id="rc-body"></div>
+    <div id="rc-meta"></div>
+    <div id="rc-edit" class="rc-edit hidden"></div>
     <div id="rc-warnings" class="warnings hidden"></div>
   </section>
 
@@ -71,6 +84,7 @@
       <button id="btn-tsv" class="btn btn-outline" type="button">📋 คัดลอก TSV</button>
       <button id="btn-pdf" class="btn btn-outline" type="button">📄 PDF แนบ</button>
     </div>
+    <button id="btn-capture" class="btn btn-ghost" type="button">🔍 จับฟอร์ม (debug DOM)</button>
   </section>
 
   <!-- Log -->

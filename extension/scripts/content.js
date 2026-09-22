@@ -273,6 +273,7 @@
     const scopeName = meta.scope_name || null;
     let filled = 0;
     let failed = 0;
+    let skipped = 0;
     const errors = [];
 
     for (let i = 0; i < repeat; i++) {
@@ -321,6 +322,12 @@
           continue;
         }
 
+        // D: skip fields the portal already filled (auto-fill from profile/ACC)
+        if (action.skip_if_value_present && el.value && String(el.value).trim() !== "") {
+          skipped++;
+          continue;
+        }
+
         switch (act) {
           case "click":
             if (clickElement(el)) filled++;
@@ -355,13 +362,26 @@
       }
     }
 
-    return { filled, failed, errors };
+    return { filled, failed, skipped, errors };
   }
 
   // --------------------------------------------------------------------------
   // Message listener
   // --------------------------------------------------------------------------
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request && request.action === "CAPTURE_FORM") {
+      // Diagnostic: dump the live form controls so the backend profile and
+      // dynamic tables (e.g. traveler rows) can be mapped precisely.
+      const controls = Array.from(document.querySelectorAll("input, textarea, select")).map((el) => ({
+        id: el.id || "",
+        name: el.name || "",
+        type: el.type || el.tagName.toLowerCase(),
+        label: (el.closest("label") ? el.closest("label").innerText : "").trim().slice(0, 60),
+      }));
+      sendResponse({ controls, url: location.href });
+      return true;
+    }
+
     if (request && request.action === "FILL_FORM") {
       (async () => {
         const mappings = (request.payload && request.payload.field_mappings) || [];
@@ -374,15 +394,16 @@
           return m;
         });
 
-        const report = { total: resolved.length, filled: 0, failed: 0, errors: [], step: 0 };
+        const report = { total: resolved.length, filled: 0, failed: 0, skipped: 0, errors: [], step: 0 };
         for (const act of resolved) {
           report.step++;
           const r = await runAction(act);
           report.filled += r.filled;
           report.failed += r.failed;
+          report.skipped += r.skipped || 0;
           report.errors.push(...r.errors.map((e) => `[${act.selector || act.action}] ${e}`));
           try {
-            chrome.runtime.sendMessage({ action: "FILL_PROGRESS", step: report.step, total: resolved.length, filled: report.filled, failed: report.failed });
+            chrome.runtime.sendMessage({ action: "FILL_PROGRESS", step: report.step, total: resolved.length, filled: report.filled, failed: report.failed, skipped: report.skipped });
           } catch (_) {}
         }
         sendResponse(report);

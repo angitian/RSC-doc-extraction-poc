@@ -1,5 +1,6 @@
 // ============================================================================
-// RSC Doc to Smart Data — Side Panel controller  v2.0.0
+// RSC Doc to Smart Data — Side Panel controller  v2.1
+// Tri-Action Hub + Editable Review Card (A) + Quick Form (B) + Excel (C)
 // ============================================================================
 "use strict";
 
@@ -17,19 +18,27 @@ const els = {
   modeSection: $("#mode-section"),
   reviewCard: $("#review-card"),
   rcType: $("#rc-type"),
-  rcBody: $("#rc-body"),
+  rcMeta: $("#rc-meta"),
+  rcEdit: $("#rc-edit"),
   rcWarnings: $("#rc-warnings"),
   actionHub: $("#action-hub"),
   btnFill: $("#btn-fill"),
   btnExcel: $("#btn-excel"),
   btnTsv: $("#btn-tsv"),
   btnPdf: $("#btn-pdf"),
+  btnCapture: $("#btn-capture"),
+  quickForm: $("#quick-form"),
+  qfProfile: $("#qf-profile"),
+  btnLoadTemplate: $("#btn-load-template"),
+  qfFields: $("#qf-fields"),
+  btnQuickFill: $("#btn-quick-fill"),
   log: $("#log"),
 };
 
 let currentResponse = null; // last ExtractionResponse
 let currentTargetUrl = "";
 let lastFile = null; // re-extract when the mode changes
+let userEdits = {}; // editable review card overrides: {key: value}
 
 // ---------------------------------------------------------------------------
 // Storage helpers
@@ -46,8 +55,12 @@ async function saveApiUrl() {
   setTimeout(() => (els.apiSaved.textContent = ""), 2000);
 }
 
+function getApiUrl() {
+  return els.apiUrl.value.trim().replace(/\/+$/, "") || DEFAULT_API;
+}
+
 // ---------------------------------------------------------------------------
-// Logging
+// Logging / status
 // ---------------------------------------------------------------------------
 function log(msg, cls = "info") {
   els.log.classList.remove("hidden");
@@ -61,6 +74,25 @@ function log(msg, cls = "info") {
 function setStatus(text, cls) {
   els.status.textContent = text;
   els.status.className = `pill pill-${cls}`;
+}
+
+// ---------------------------------------------------------------------------
+// Active tab helpers
+// ---------------------------------------------------------------------------
+async function getActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return tab || { url: "", id: null };
+}
+
+async function capturePageSnapshot(tabId) {
+  // Ask the content script for the live form controls (DOM signature)
+  try {
+    const res = await chrome.runtime.sendMessage({ action: "CAPTURE_FORM", tabId });
+    if (res && res.ok && res.result && res.result.controls) {
+      return res.result.controls.map((c) => ({ id: c.id, name: c.name, type: c.type, label: c.label }));
+    }
+  } catch (_) {}
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,39 +125,35 @@ els.fileInput.addEventListener("change", (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Extraction
+// Extraction (uploaded file)
 // ---------------------------------------------------------------------------
-async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  return tab || { url: "", id: null };
-}
-
 async function handleFile(file) {
   lastFile = file;
   const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
-  if (![".docx", ".pdf"].includes(ext)) {
-    setStatus("ไฟล์ต้องเป็น .docx/.pdf", "err");
+  if (![".docx", ".pdf", ".xlsx"].includes(ext)) {
+    setStatus("ไฟล์ต้องเป็น .docx/.pdf/.xlsx", "err");
     return;
   }
 
-  const apiUrl = (els.apiUrl.value.trim().replace(/\/+$/, "") || DEFAULT_API);
   const mode = document.querySelector('input[name="mode"]:checked').value;
   const tab = await getActiveTab();
   currentTargetUrl = tab.url || "";
 
   setStatus("กำลังสกัดข้อมูล...", "busy");
-  log(`ยิง API: ${apiUrl}/api/v1/extract (${file.name}, mode=${mode})`);
+  log(`ยิง API: ${getApiUrl()}/api/v1/extract (${file.name}, mode=${mode})`);
 
   const form = new FormData();
   form.append("file", file);
   form.append("mode", mode);
   form.append("target_url", currentTargetUrl);
+  const snapshot = await capturePageSnapshot(tab.id);
+  if (snapshot && snapshot.length) form.append("page_snapshot", JSON.stringify(snapshot));
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${apiUrl}/api/v1/extract`, { method: "POST", body: form, signal: controller.signal });
+    const res = await fetch(`${getApiUrl()}/api/v1/extract`, { method: "POST", body: form, signal: controller.signal });
     if (!res.ok) {
       let detail = `HTTP ${res.status}`;
       try {
@@ -136,9 +164,10 @@ async function handleFile(file) {
     }
     const data = await res.json();
     currentResponse = data;
+    userEdits = {};
     renderReview(data);
     setStatus("สกัดสำเร็จ", "ok");
-    log("สกัดสำเร็จ — พร้อมตรวจสอบข้อมูล", "ok");
+    log(`สกัดสำเร็จ — ฟอร์ม: ${data.profile_name || data.form_type || "?"}`, "ok");
   } catch (err) {
     if (err.name === "AbortError") {
       setStatus("รอเซิร์ฟเวอร์ตอบนานเกินไป", "err");
@@ -153,46 +182,57 @@ async function handleFile(file) {
   }
 }
 
-// Re-extract when the user switches mode (full_table <-> annex_pdf)
-document.querySelectorAll('input[name="mode"]').forEach((radio) => {
-  radio.addEventListener("change", () => {
-    if (lastFile) handleFile(lastFile);
-  });
-});
+// ---------------------------------------------------------------------------
+// Review card (editable)
+// ---------------------------------------------------------------------------
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 
-// ---------------------------------------------------------------------------
-// Review card
-// ---------------------------------------------------------------------------
 function renderReview(data) {
   els.modeSection.classList.remove("hidden");
   els.reviewCard.classList.remove("hidden");
   els.actionHub.classList.remove("hidden");
 
   const s = data.summary || {};
+  const info = [
+    ["เอกสาร", `${s.doc_type_label || data.doc_type} (${Math.round((data.confidence || 0) * 100)}%)`],
+    ["ฟอร์มปลายทาง", data.profile_name || data.form_type || "?"],
+  ];
+  if (data.page_match_confidence) info.push(["ความตรงฟอร์ม", Math.round(data.page_match_confidence * 100) + "%"]);
   els.rcType.textContent = `${s.doc_type_label || data.doc_type} · ${Math.round((data.confidence || 0) * 100)}%`;
 
-  const fmt = (n) => (typeof n === "number" ? n.toLocaleString("th-TH", { minimumFractionDigits: 2 }) : n);
-  const rows = [
-    ["ชื่อโครงการ", s.project_name],
-    ["ผู้ขอ/ผู้เดินทาง", s.traveler],
-    ["ช่วงเวลา", s.date_range],
-    ["จำนวนรายการค่าใช้จ่าย", s.expense_items_count + " รายการ"],
-    ["จำนวนกิจกรรมกำหนดการ", s.itinerary_items_count + " รายการ"],
-  ];
-  let html = '<div class="rc-grid">';
-  rows.forEach(([k, v]) => {
-    if (!v) return;
-    html += `<div class="rc-item"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(String(v))}</span></div>`;
-  });
-  html += `<div class="rc-item"><span class="k">ยอดรวมทั้งสิ้น</span><span class="v rc-total">฿ ${fmt(s.total_amount)}</span></div>`;
-  html += "</div>";
+  let html = info.map(([k, v]) => `<div class="rc-meta-row"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(String(v))}</span></div>`).join("");
+  html += `<div class="rc-meta-row"><span class="k">ชื่อโครงการ</span><span class="v">${escapeHtml(s.project_name || "-")}</span></div>`;
+  html += `<div class="rc-meta-row"><span class="k">ยอดรวม</span><span class="v rc-total">฿ ${Number(s.total_amount || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span></div>`;
+  els.rcMeta.innerHTML = html;
 
-  const cats = s.categories || {};
-  const catKeys = Object.keys(cats);
-  if (catKeys.length) {
-    html += '<div class="chips">' + catKeys.map((c) => `<span class="chip">${escapeHtml(c)}: ${fmt(cats[c])}</span>`).join("") + "</div>";
+  // Editable fields (A)
+  const fields = data.editable_fields || [];
+  if (fields.length) {
+    els.rcEdit.classList.remove("hidden");
+    els.rcEdit.innerHTML =
+      `<div class="rc-e-note">✏️ แก้ค่าก่อนยิงได้ (กรอกรวดเดียว ไม่ต้องมองทีละหัวข้อ)</div>` +
+      fields
+        .map((f) => {
+          const key = f.key;
+          const type = f.type === "date" ? "date" : f.type === "number" ? "number" : "text";
+          const val = userEdits[key] !== undefined ? userEdits[key] : f.value ?? "";
+          return `<div class="rc-e-row">
+            <span class="rc-e-label" title="${escapeHtml(key)}">${escapeHtml(f.label)}</span>
+            ${type === "textarea" ? `<textarea data-key="${escapeHtml(key)}">${escapeHtml(val)}</textarea>`
+              : `<input data-key="${escapeHtml(key)}" type="${type}" value="${escapeHtml(val)}" />`}
+          </div>`;
+        })
+        .join("");
+    els.rcEdit.querySelectorAll("input, textarea").forEach((el) => {
+      el.addEventListener("input", () => {
+        userEdits[el.dataset.key] = el.value;
+      });
+    });
+  } else {
+    els.rcEdit.classList.add("hidden");
   }
-  els.rcBody.innerHTML = html;
 
   if (data.warnings && data.warnings.length) {
     els.rcWarnings.classList.remove("hidden");
@@ -207,13 +247,18 @@ function hideReview() {
   els.actionHub.classList.add("hidden");
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
 // ---------------------------------------------------------------------------
 // Tri-Action Hub
 // ---------------------------------------------------------------------------
+function applyOverrides(mappings) {
+  return mappings.map((m) => {
+    if (m.key && userEdits[m.key] !== undefined && String(userEdits[m.key]).trim() !== "") {
+      return { ...m, value: String(userEdits[m.key]) };
+    }
+    return m;
+  });
+}
+
 els.btnFill.addEventListener("click", async () => {
   if (!currentResponse) return;
   const tab = await getActiveTab();
@@ -223,14 +268,15 @@ els.btnFill.addEventListener("click", async () => {
   }
   els.btnFill.disabled = true;
   setStatus("กำลังยิงข้อมูลลงฟอร์ม...", "busy");
-  log(`ยิง field_mappings ${currentResponse.field_mappings.length} คำสั่ง ไปยังแท็บ`);
+  const mappings = applyOverrides(currentResponse.field_mappings);
+  log(`ยิง field_mappings ${mappings.length} คำสั่ง ไปยังแท็บ${Object.keys(userEdits).length ? ` (แก้ ${Object.keys(userEdits).length} ค่า)` : ""}`);
 
   try {
     const res = await chrome.runtime.sendMessage({
       action: "FILL_FORM",
       tabId: tab.id,
       payload: {
-        field_mappings: currentResponse.field_mappings,
+        field_mappings: mappings,
         annex_base64: currentResponse.pdf_annex_base64 || "",
       },
     });
@@ -238,8 +284,9 @@ els.btnFill.addEventListener("click", async () => {
       const r = res.result;
       const okCount = r && typeof r.filled === "number" ? r.filled : 0;
       const errCount = r && typeof r.failed === "number" ? r.failed : 0;
+      const skipCount = r && typeof r.skipped === "number" ? r.skipped : 0;
       setStatus(`กรอกสำเร็จ ${okCount}/${r.total}`, errCount > 0 ? "busy" : "ok");
-      log(`✅ กรอกสำเร็จ ${okCount} จาก ${r.total}${errCount ? ` | ❌ ล้มเหลว ${errCount}` : ""}`, errCount ? "err" : "ok");
+      log(`✅ กรอกสำเร็จ ${okCount} จาก ${r.total}${skipCount ? ` | ข้าม (เว็บเติมแล้ว) ${skipCount}` : ""}${errCount ? ` | ❌ ล้มเหลว ${errCount}` : ""}`, errCount ? "err" : "ok");
       (r.errors || []).slice(0, 8).forEach((e) => log("  ↳ " + e, "err"));
     } else {
       setStatus("ยิงไม่สำเร็จ", "err");
@@ -304,6 +351,109 @@ els.btnTsv.addEventListener("click", async () => {
   }
 });
 
+// จับฟอร์ม (debug)
+els.btnCapture.addEventListener("click", async () => {
+  const tab = await getActiveTab();
+  if (!tab.id) return;
+  const res = await chrome.runtime.sendMessage({ action: "CAPTURE_FORM", tabId: tab.id });
+  if (res && res.ok && res.result) {
+    const controls = res.result.controls || [];
+    log(`🔍 จับฟอร์มได้ ${controls.length} ฟิลด์ — ดู JSON ใน log นี้`, "info");
+    log(JSON.stringify(controls, null, 1).slice(0, 600), "info");
+  } else {
+    log("❌ จับฟอร์มไม่สำเร็จ: " + (res && res.error ? res.error : ""), "err");
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Quick Form (B)
+// ---------------------------------------------------------------------------
+async function loadForms() {
+  try {
+    const res = await fetch(`${getApiUrl()}/api/v1/forms`);
+    const data = await res.json();
+    els.qfProfile.innerHTML = data.forms
+      .map((f) => `<option value="${escapeHtml(f.profile_id)}">${escapeHtml(f.name)}</option>`)
+      .join("");
+    renderQuickFields(data.forms[0]);
+    return data.forms;
+  } catch (err) {
+    log("❌ โหลดฟอร์มไม่สำเร็จ: " + err.message, "err");
+    return [];
+  }
+}
+
+function renderQuickFields(form) {
+  if (!form) return;
+  els.qfFields.innerHTML = form.fields
+    .filter((f) => f.type !== "select")
+    .map((f) => {
+      const t = f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "textarea" ? "textarea" : "text";
+      return `<div class="qf-field">
+        <label>${escapeHtml(f.label)}</label>
+        ${t === "textarea" ? `<textarea data-k="${escapeHtml(f.key)}"></textarea>`
+          : `<input data-k="${escapeHtml(f.key)}" type="${t}" />`}
+      </div>`;
+    })
+    .join("");
+}
+
+els.qfProfile.addEventListener("change", async () => {
+  const res = await fetch(`${getApiUrl()}/api/v1/forms`);
+  const data = await res.json();
+  renderQuickFields(data.forms.find((f) => f.profile_id === els.qfProfile.value));
+});
+
+els.btnLoadTemplate.addEventListener("click", async () => {
+  const profileId = els.qfProfile.value;
+  try {
+    const res = await fetch(`${getApiUrl()}/api/v1/templates/${profileId}`);
+    const data = await res.json();
+    downloadBase64(data.base64, data.filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    log("📥 ดาวน์โหลด Excel template แล้ว", "ok");
+  } catch (err) {
+    log("❌ ดาวน์โหลด template ไม่สำเร็จ: " + err.message, "err");
+  }
+});
+
+els.btnQuickFill.addEventListener("click", async () => {
+  const values = {};
+  els.qfFields.querySelectorAll("input, textarea").forEach((el) => {
+    if (el.value && String(el.value).trim() !== "") values[el.dataset.k] = el.value;
+  });
+  if (!Object.keys(values).length) {
+    setStatus("กรอกข้อมูลอย่างน้อย 1 ช่องก่อน", "err");
+    return;
+  }
+  const tab = await getActiveTab();
+  currentTargetUrl = tab.url || "";
+  const snapshot = await capturePageSnapshot(tab.id);
+
+  setStatus("กำลังสร้าง mapping...", "busy");
+  try {
+    const res = await fetch(`${getApiUrl()}/api/v1/fill`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profile_id: els.qfProfile.value,
+        target_url: currentTargetUrl,
+        page_snapshot: snapshot,
+        values,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    currentResponse = data;
+    userEdits = {};
+    renderReview(data);
+    log(`⚡ Quick Form: ${data.field_mappings.length} mappings พร้อมยิง`, "ok");
+    setStatus("พร้อมยิง (Quick)", "ok");
+  } catch (err) {
+    setStatus("สร้าง mapping ไม่สำเร็จ", "err");
+    log("❌ " + err.message, "err");
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Progress from content script
 // ---------------------------------------------------------------------------
@@ -318,4 +468,5 @@ chrome.runtime.onMessage.addListener((msg) => {
 // ---------------------------------------------------------------------------
 loadApiUrl();
 els.saveApi.addEventListener("click", saveApiUrl);
+loadForms();
 setStatus("พร้อมใช้งาน", "idle");

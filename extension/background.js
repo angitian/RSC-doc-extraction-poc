@@ -13,8 +13,8 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg && msg.action === "FILL_FORM") {
-    const { tabId, payload } = msg;
+  if (msg && (msg.action === "FILL_FORM" || msg.action === "CAPTURE_FORM")) {
+    const { tabId } = msg;
     (async () => {
       try {
         // Inject the content script on demand
@@ -22,10 +22,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           target: { tabId },
           files: ["scripts/content.js"],
         });
-        // Ask the content script to run the action sequence
         const response = await chrome.tabs.sendMessage(tabId, {
-          action: "FILL_FORM",
-          payload,
+          action: msg.action,
+          payload: msg.payload,
         });
         sendResponse({ ok: true, result: response });
       } catch (err) {

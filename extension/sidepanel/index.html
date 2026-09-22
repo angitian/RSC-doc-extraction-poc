@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RSC Doc to Smart Data</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="logo">📄</span>
+      <div>
+        <h1>RSC Doc → Smart Data</h1>
+        <p class="sub">สกัดเอกสารราชการ → กรอกแบบฟอร์มเว็บ</p>
+      </div>
+    </div>
+    <span id="status-pill" class="pill pill-idle">พร้อมใช้งาน</span>
+  </header>
+
+  <!-- Settings -->
+  <details class="settings">
+    <summary>⚙️ ตั้งค่า API (ที่ฝาก Backend)</summary>
+    <div class="settings-body">
+      <label for="api-url">API Base URL</label>
+      <input id="api-url" type="url" placeholder="https://xxx.onrender.com" spellcheck="false" />
+      <div class="row">
+        <button id="save-api" class="btn btn-ghost" type="button">บันทึก</button>
+        <span id="api-saved" class="hint ok"></span>
+      </div>
+      <p class="hint">เช่น https://<b>ชื่อ</b>.onrender.com หรือ http://127.0.0.1:8000</p>
+    </div>
+  </details>
+
+  <!-- Drop zone -->
+  <section id="drop-zone" class="drop-zone" tabindex="0">
+    <div class="dz-icon">📂</div>
+    <p><b>ลากไฟล์ .docx / .pdf มาวาง</b><br/>หรือคลิกเพื่อเลือกไฟล์</p>
+    <input id="file-input" type="file" accept=".docx,.pdf" hidden />
+  </section>
+
+  <!-- Mode selector -->
+  <section id="mode-section" class="card hidden">
+    <h2>โหมดการกรอก</h2>
+    <label class="radio-row">
+      <input type="radio" name="mode" value="full_table" checked />
+      <span><b>Full Dynamic Table</b><small>แตกตารางค่าใช้จ่าย/กำหนดการกรอกลงเว็บ</small></span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="mode" value="annex_pdf" />
+      <span><b>Summary + PDF Annex</b><small>กรอกเฉพาะหัวข้อหลัก + แนบ PDF เอกสารแนบ</small></span>
+    </label>
+  </section>
+
+  <!-- Review card -->
+  <section id="review-card" class="card hidden">
+    <div class="rc-head">
+      <h2>ตรวจสอบข้อมูลก่อนยิง</h2>
+      <span id="rc-type" class="pill pill-blue"></span>
+    </div>
+    <div id="rc-body"></div>
+    <div id="rc-warnings" class="warnings hidden"></div>
+  </section>
+
+  <!-- Action hub -->
+  <section id="action-hub" class="card hidden">
+    <h2>ดำเนินการ</h2>
+    <button id="btn-fill" class="btn btn-primary" type="button">🚀 ยิงข้อมูลลงแบบฟอร์ม</button>
+    <div class="row">
+      <button id="btn-excel" class="btn btn-outline" type="button">📊 Excel</button>
+      <button id="btn-tsv" class="btn btn-outline" type="button">📋 คัดลอก TSV</button>
+      <button id="btn-pdf" class="btn btn-outline" type="button">📄 PDF แนบ</button>
+    </div>
+  </section>
+
+  <!-- Log -->
+  <section id="log" class="log hidden" aria-live="polite"></section>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

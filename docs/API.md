@@ -1,0 +1,82 @@
+# RSC Extraction API — Contract
+
+Base URL เปลี่ยนตาม host ที่ deploy (ดู docs/DEPLOY.md)
+
+## `GET /api/v1/health`
+
+```json
+{ "status": "ok", "service": "rsc-extraction-api", "version": "2.0.0" }
+```
+
+## `POST /api/v1/extract`
+
+multipart/form-data:
+
+| field | ประเภท | ค่า |
+|---|---|---|
+| `file` | File | `.docx` หรือ `.pdf` (สูงสุด 20 MB) |
+| `mode` | string | `full_table` (default) \| `annex_pdf` |
+| `target_url` | string | URL หน้าปัจจุบันของเว็บราชการ (ใช้แมป field_mappings) |
+
+### Response (200) — `ExtractionResponse`
+
+```json
+{
+  "doc_type": "travel_request",
+  "confidence": 0.84,
+  "metadata": { "...": "ทุกฟิลด์ที่สกัดได้จากเอกสาร" },
+  "expense_summary": { "ค่าเช่ายานพาหนะ": 9000.0, "ค่าน้ำมันเชื้อเพลิง": 6000.0 },
+  "total_amount": 21200.0,
+  "raw_tables": {
+    "breakdown": [["ค่าจ้างเหมาพาหนะ", "จำนวน 6 วัน x 1,500 บาท", "9,000"]],
+    "schedule": [["วันที่ 3 สิงหาคม 2569", "ศูนย์...", "07.00 – 10.00 น.", "ออกเดินทาง..."]]
+  },
+  "field_mappings": [
+    { "selector": "#project-document-number", "action": "set_value", "value": "7608.8/69" },
+    { "selector": "#expense-description-0", "action": "set_value", "value": "ค่าจ้างเหมาพาหนะ" },
+    { "selector": "button", "action": "click_button", "value": "เพิ่มรายการ", "repeat": 3, "delay_ms": 350 }
+  ],
+  "pdf_annex_base64": "JVBERi0xLjQK...",
+  "pdf_annex_filename": "ประมาณการค่าใช้จ่ายและกำหนดการ.pdf",
+  "excel_filled_base64": "UEsDBBQ...",
+  "excel_filled_filename": "ข้อมูลโครงการและค่าใช้จ่าย.xlsx",
+  "summary": {
+    "doc_type": "travel_request",
+    "doc_type_label": "คำขออนุมัติเดินทาง",
+    "confidence": 0.84,
+    "project_name": "...",
+    "traveler": "นายรณกร อำพันธ์ศรี",
+    "date_range": "3, 10, ... สิงหาคม 2569",
+    "total_amount": 21200.0,
+    "expense_items_count": 4,
+    "itinerary_items_count": 30,
+    "categories": { "ค่าเช่ายานพาหนะ": 9000.0 }
+  },
+  "warnings": []
+}
+```
+
+### Errors
+
+| status | กรณี |
+|---|---|
+| 400 | mode ไม่ถูกต้อง / ไฟล์ว่าง / ประเภทไฟล์ไม่รองรับ |
+| 413 | ไฟล์ใหญ่เกิน 20 MB |
+| 422 | อ่านไฟล์ไม่สำเร็จ (เสียหาย / ไม่ใช่ docx-pdf จริง) |
+
+## DOMAction — คำสั่งที่ Content Script รองรับ
+
+| action | selector | value | หมายเหตุ |
+|---|---|---|---|
+| `set_value` | CSS | ข้อความ/ตัวเลข/วันที่ (ISO) | ใช้ native setter + dispatch input/change/blur (React/Vue ครบ) |
+| `set_select` | CSS | text หรือ option value | เลือก option แบบ contains ด้วย |
+| `set_radio` | CSS (radio ตัวใดใน group) | radio value | คลิก radio ที่ตรง value ใน name group เดียวกัน |
+| `click` | CSS | — | คลิก element แรก |
+| `click_button` | CSS container (ว่างได้) | ข้อความปุ่ม | หา `<button>` ที่มีข้อความตรง (`:has()` ใช้ scope ได้) |
+| `file_attach` | CSS ของ `<input type=file>` (optional) | base64 | ผ่าน DataTransfer + change event — ถ้า selector ไม่เจอ จะ fallback ไป `input[type="file"]` → `input[accept*="pdf"]` อัตโนมัติ (กัน React ID เปลี่ยน) |
+| `wait` | — | — | หน่วงเวลา `delay_ms` |
+
+ฟิลด์เพิ่มเติม:
+- `label` (string) — **ป้ายภาษาไทยของฟิลด์** เช่น `"วัตถุประสงค์"`, `"ชื่อโครงการ/โครงการย่อย"`, `"วงเงินรวม (บาท)"` — Content Script ใช้เป็นตัวชี้หลักสำรอง: ถ้า CSS selector หาไม่เจอ (React auto-ID เช่น `input-94`/`textarea-19` เปลี่ยนทุก build) จะหา element จาก label (`label[for]` → label ครอบ → aria-label/placeholder) แทน
+- `meta.scope_name` — ใช้กับ radio โดยเฉพาะ เพื่อแยกกลุ่ม เช่น `"expense-document-source"` กับ `"schedule-document-source"`
+- `index` (เลือก element ลำดับที่ N), `repeat` (ทำซ้ำ เช่น คลิกเพิ่มแถว), `delay_ms`

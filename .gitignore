@@ -17,6 +17,12 @@ Thumbs.db
 # Extension build artifacts
 *.crx
 *.pem
+*.rar
+*.zip
+
+# Large media / local captures (do not push into history)
+demo.mp4
+messageImage_*.jpg
 
 # Backup / old versions
 app_v1.py

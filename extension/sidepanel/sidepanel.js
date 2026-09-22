@@ -40,6 +40,21 @@ let currentTargetUrl = "";
 let lastFile = null; // re-extract when the mode changes
 let userEdits = {}; // editable review card overrides: {key: value}
 
+// Map raw select values to Thai labels for the editable review card
+const SELECT_LABELS = {
+  conference: "เข้าร่วมประชุม",
+  seminar: "เข้าร่วมสัมมนา",
+  training: "เข้าร่วมฝึกอบรม",
+  workshop: "เข้าร่วม Workshop",
+  "official-travel": "เดินทางไปราชการ",
+  "site-visit": "ไปศึกษาดูงาน",
+  domestic: "ในประเทศ",
+  international: "ต่างประเทศ",
+  attendee: "ผู้เข้าร่วม",
+  presenter: "ผู้นำเสนอผลงาน",
+};
+const selLabel = (v) => SELECT_LABELS[v] || v;
+
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
@@ -194,6 +209,17 @@ function renderReview(data) {
   els.reviewCard.classList.remove("hidden");
   els.actionHub.classList.remove("hidden");
 
+  // Conference form has no PDF upload — hide the annex_pdf mode
+  const annexRadio = document.querySelector('input[name="mode"][value="annex_pdf"]');
+  const annexLabel = annexRadio ? annexRadio.closest(".radio-row") : null;
+  if (annexLabel) {
+    const isConference = data.profile_id === "rsc_conference";
+    annexLabel.style.display = isConference ? "none" : "";
+    if (isConference && annexRadio.checked) {
+      document.querySelector('input[name="mode"][value="full_table"]').checked = true;
+    }
+  }
+
   const s = data.summary || {};
   const info = [
     ["เอกสาร", `${s.doc_type_label || data.doc_type} (${Math.round((data.confidence || 0) * 100)}%)`],
@@ -217,7 +243,9 @@ function renderReview(data) {
         .map((f) => {
           const key = f.key;
           const type = f.type === "date" ? "date" : f.type === "number" ? "number" : "text";
-          const val = userEdits[key] !== undefined ? userEdits[key] : f.value ?? "";
+          const rawVal = userEdits[key] !== undefined ? userEdits[key] : f.value ?? "";
+          // Show Thai labels for select values (conference -> เข้าร่วมประชุม)
+          const val = f.type === "select" ? selLabel(rawVal) : rawVal;
           return `<div class="rc-e-row">
             <span class="rc-e-label" title="${escapeHtml(key)}">${escapeHtml(f.label)}</span>
             ${type === "textarea" ? `<textarea data-key="${escapeHtml(key)}">${escapeHtml(val)}</textarea>`
@@ -469,4 +497,6 @@ chrome.runtime.onMessage.addListener((msg) => {
 loadApiUrl();
 els.saveApi.addEventListener("click", saveApiUrl);
 loadForms();
+// Quick Form starts collapsed to keep the panel tidy (ย่อไว้ก่อน)
+els.quickForm.removeAttribute("open");
 setStatus("พร้อมใช้งาน", "idle");

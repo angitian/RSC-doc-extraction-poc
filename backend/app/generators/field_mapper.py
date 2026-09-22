@@ -282,7 +282,7 @@ def _build_json_mappings(profile: Dict[str, Any], extracted: Dict[str, Any], mod
             title = str(extracted.get("project_title") or "")
             v = "presenter" if "นำเสนอ" in title else "attendee"
             actions.append(_act("", "set_select", v, label=f["label"]))
-            editable.append({"key": key or "participant_role", "label": f["label"], "type": "select", "value": v})
+            editable.append({"key": "participant_role", "label": f["label"], "type": "select", "value": v})
 
         elif gen == "conference_expense_number":
             amt = float(categories.get(key, 0) or 0)

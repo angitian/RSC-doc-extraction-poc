@@ -7,7 +7,7 @@
   "notes": "ฟอร์มนี้ไม่มีช่องอัปโหลด PDF / ไม่มีตาราง dynamic — เฉพาะโหมด full_table",
 
   "fields": [
-    { "target": "input", "label": "เลขที่เอกสาร",            "from": "doc_number_tail", "transform": "strip_commas", "type": "text" },
+    { "target": "", "label": "เลขที่เอกสาร",            "from": "doc_number_tail", "transform": "strip_commas", "type": "text" },
     { "target": "#conference-document-date", "label": "วันที่หนังสือ", "from": "doc_date_iso", "type": "date" },
 
     { "gen": "conference_select_travel_type", "label": "ประเภทการเดินทาง", "from": "event_type" },
@@ -21,18 +21,18 @@
 
     { "gen": "conference_select_participant_role", "label": "รูปแบบการเข้าร่วม", "from": "project_title" },
 
-    { "target": "textarea", "label": "ชื่องาน/กิจกรรม (รายละเอียดโดยสังเขป)", "from": "event_title", "type": "textarea" },
+    { "target": "", "label": "ชื่องาน/กิจกรรม (รายละเอียดโดยสังเขป)", "from": "event_title", "type": "textarea" },
     { "target": "#conference-location-shared-start-date", "label": "วันที่เริ่มต้นของทุกสถานที่", "from": "start_date_iso", "type": "date" },
     { "target": "#conference-location-shared-end-date", "label": "วันที่สิ้นสุดของทุกสถานที่", "from": "end_date_iso", "type": "date" },
     { "target": "#conference-location-0-location", "label": "สถานที่", "from": "location_name", "type": "text" },
     { "target": "#conference-location-0-province", "label": "จังหวัด", "from": "province_name", "type": "text" },
-    { "target": "input", "label": "หน่วยงานผู้จัด", "from": "organizer", "type": "text" },
+    { "target": "", "label": "หน่วยงานผู้จัด", "from": "organizer", "type": "text" },
 
     { "gen": "conference_expense_number", "label": "1. ค่าลงทะเบียน (บาท)", "from": "registration", "type": "number" },
     { "gen": "conference_expense_number", "label": "2. ค่าเบี้ยเลี้ยง (บาท)", "from": "per_diem", "type": "number" },
     { "gen": "conference_expense_number", "label": "3. ค่าที่พัก (บาท)", "from": "accommodation", "type": "number" },
     { "gen": "conference_expense_number", "label": "4. ค่าพาหนะเดินทาง (บาท)", "from": "vehicle", "type": "number" },
-    { "target": "textarea", "label": "รายละเอียดค่าพาหนะเดินทาง", "from": "vehicle_details", "type": "textarea" },
+    { "target": "", "label": "รายละเอียดค่าพาหนะเดินทาง", "from": "vehicle_details", "type": "textarea" },
     { "gen": "conference_expense_number", "label": "5. เงินชดเชยพาหนะส่วนตัว (บาท)", "from": "vehicle_compensation", "type": "number" },
     { "gen": "conference_expense_number", "label": "6. ค่าธรรมเนียม/ค่าใช้จ่ายอื่นๆ (บาท)", "from": "other", "type": "number" },
 

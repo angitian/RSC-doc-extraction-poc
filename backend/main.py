@@ -197,6 +197,16 @@ async def extract(
 # ---------------------------------------------------------------------------
 # Quick Form / Excel template support
 # ---------------------------------------------------------------------------
+# Derived form fields — the system computes these (Quick Form should hide them)
+AUTO_GENS = {
+    "conference_select_travel_type",
+    "conference_select_region",
+    "conference_select_acc",
+    "conference_select_participant_role",
+    "conference_travelers",
+}
+
+
 @app.get("/api/v1/forms")
 def list_forms():
     """List registered form profiles + their field schema (for Quick Form)."""
@@ -205,12 +215,16 @@ def list_forms():
         fields = []
         if "fields" in p:
             for f in p["fields"]:
-                if f.get("from") or f.get("gen"):
-                    fields.append({
-                        "key": f.get("from") or f.get("gen"),
-                        "label": f.get("label", ""),
-                        "type": f.get("type", "text"),
-                    })
+                gen = f.get("gen")
+                if gen in AUTO_GENS:
+                    continue  # derived — not user-enterable in Quick Form
+                if not (f.get("from") or gen) or not f.get("label"):
+                    continue  # skip ghost fields (e.g. travelers gen w/o label)
+                fields.append({
+                    "key": f.get("from") or gen,
+                    "label": f.get("label", ""),
+                    "type": f.get("type", "text"),
+                })
         out.append({
             "profile_id": p.get("profile_id"),
             "name": p.get("name"),

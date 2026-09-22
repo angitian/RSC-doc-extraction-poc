@@ -67,9 +67,18 @@
     return null;
   }
 
+  // Bare-tag selectors ('input', 'textarea', ...) match MANY elements and the
+  // first match is often the wrong field — when a label hint exists, prefer it.
+  const BARE_TAG_RE = /^(input|textarea|select|button|a|label)$/i;
+
   function waitForElement(selector, index, timeoutMs = 6000, label, scopeName) {
     return new Promise((resolve) => {
       const find = () => {
+        if (selector && label && BARE_TAG_RE.test(selector.trim())) {
+          // generic selector + label -> resolve by label first
+          const byLabel = findByLabel(label, scopeName);
+          if (byLabel) return byLabel;
+        }
         if (selector) {
           try {
             const nodes = document.querySelectorAll(selector);

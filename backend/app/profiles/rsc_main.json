@@ -1,0 +1,9 @@
+{
+  "profile_id": "rsc_main",
+  "name": "RSC Smart Approval — บันทึกข้อความ (ฟอร์มหลัก)",
+  "form_type": "travel_request",
+  "url_patterns": ["smart-approval", "smart_approval", "rsc", "approval"],
+  "dom_signature": ["backgroundContext-field", "acc-field", "project-document-number", "expense-description-0", "generated-expense-project-name"],
+  "builder": "rsc_main",
+  "notes": "ฟอร์มหลักมี logic ซับซ้อน (ตาราง dynamic + โหมด PDF) — ใช้ Python builder ที่ผ่านการทดสอบแล้ว"
+}

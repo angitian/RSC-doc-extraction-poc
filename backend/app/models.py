@@ -35,6 +35,12 @@ class DOMAction(BaseModel):
     # by its visible label when the CSS selector is stale (React auto-generated
     # IDs like `input-94` change on every portal build; labels stay stable).
     label: Optional[str] = None
+    # Metadata key the value came from — lets the side panel override values
+    # via the editable review card before filling.
+    key: Optional[str] = None
+    # When true, the content script skips filling if the field already has a
+    # value (portal auto-fill from user profile / ACC must not be overwritten).
+    skip_if_value_present: bool = False
     index: Optional[int] = None
     repeat: int = 1
     delay_ms: int = 150
@@ -55,6 +61,13 @@ class ExtractionResponse(BaseModel):
     total_amount: float = 0.0
     # 3. Raw tables for TSV / Excel export
     raw_tables: Dict[str, List[List[str]]] = Field(default_factory=dict)
+    # 3.5 Form profile resolution (which web form matched the target page)
+    form_type: Optional[str] = None
+    profile_id: Optional[str] = None
+    profile_name: Optional[str] = None
+    page_match_confidence: float = 0.0
+    # Editable fields for the review card (key/label/type/value)
+    editable_fields: List[Dict[str, Any]] = Field(default_factory=list)
     # 4. Dynamic DOM instructions for the current target page
     field_mappings: List[DOMAction] = Field(default_factory=list)
     # 5. Base64 assets (optional, only when mode requires them)

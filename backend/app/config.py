@@ -26,7 +26,7 @@ CORS_ALLOW_HEADERS = ["*"]
 
 # Request limits
 MAX_FILE_SIZE_MB = 20
-ALLOWED_EXTENSIONS = {".docx", ".pdf"}
+ALLOWED_EXTENSIONS = {".docx", ".pdf", ".xlsx"}
 
 # Output names
 ANNEX_FILENAME = "ประมาณการค่าใช้จ่ายและกำหนดการ.pdf"

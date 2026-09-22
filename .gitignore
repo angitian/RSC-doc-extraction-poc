@@ -14,6 +14,9 @@ Thumbs.db
 *.xlsx
 *.pdf
 
+# ...แต่เก็บ DOCX template มาตรฐานของหน่วยงานไว้ใน repo
+!backend/templates/*.docx
+
 # Extension build artifacts
 *.crx
 *.pem

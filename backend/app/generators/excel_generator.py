@@ -128,3 +128,60 @@ def num_to_thai_text(amount: float) -> str:
     from ..normalizer.thai_utils import num_to_thai_baht
 
     return num_to_thai_baht(amount)
+
+
+# ---------------------------------------------------------------------------
+# Fill-in Excel template (Quick Form / Excel mode)
+# ---------------------------------------------------------------------------
+def generate_fill_template_bytes(fields) -> bytes:
+    """Build a label→value .xlsx template from a profile's field schema.
+
+    fields: list of {"key", "label", "type"} (from /api/v1/forms).
+    """
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ฟอร์ม"
+    ws["A1"] = "ฟิลด์"
+    ws["B1"] = "ค่าที่กรอก"
+    ws["A1"].font = Font(name=THAI_FONT, size=12, bold=True)
+    ws["B1"].font = Font(name=THAI_FONT, size=12, bold=True)
+
+    r = 2
+    for f in fields:
+        label = str(f.get("label", ""))
+        key = str(f.get("key", ""))
+        # ใช้ label สั้น (ไม่มีเลขหมวด) เป็นคอลัมน์ A เพื่อให้ excel_extractor อ่านกลับได้
+        ws.cell(row=r, column=1, value=label).font = BODY_FONT
+        ws.cell(row=r, column=1).alignment = Alignment(vertical="top")
+        t = f.get("type", "text")
+        if t == "number":
+            ws.cell(row=r, column=2, value=0).number_format = "#,##0.00"
+        elif t == "textarea":
+            ws.cell(row=r, column=2, value="").alignment = Alignment(wrap_text=True, vertical="top")
+        elif t == "date":
+            ws.cell(row=r, column=2, value="2026-01-01")
+        r += 1
+
+    # Traveler section (convention)
+    ws.cell(row=r, column=1, value="รายชื่อผู้ร่วมเดินทาง").font = Font(name=THAI_FONT, size=12, bold=True)
+    r += 1
+    headers = ["ลำดับ", "คำนำหน้า", "ชื่อ", "นามสกุล", "ตำแหน่ง", "หน่วยงาน"]
+    for c, h in enumerate(headers, start=1):
+        ws.cell(row=r, column=c, value=h).font = Font(name=THAI_FONT, size=12, bold=True)
+    for i in range(1, 6):
+        ws.cell(row=r + i, column=1, value=i)
+        for c in range(1, 7):
+            ws.cell(row=r + i, column=c).font = BODY_FONT
+
+    ws.column_dimensions["A"].width = 42
+    ws.column_dimensions["B"].width = 60
+    ws.column_dimensions["C"].width = 18
+    ws.column_dimensions["D"].width = 18
+    ws.column_dimensions["E"].width = 18
+    ws.column_dimensions["F"].width = 24
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

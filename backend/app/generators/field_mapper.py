@@ -39,146 +39,155 @@ def _budget_year(extracted: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # RSC Smart Approval profile
 # ---------------------------------------------------------------------------
-def _build_rsc_mappings(extracted: Dict[str, Any], mode: str) -> List[DOMAction]:
+def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
+                        attach_sections: Optional[List[str]] = None) -> List[DOMAction]:
+    """Build mappings for the main RSC form.
+
+    attach_sections: sections where the user supplies their own PDF
+    ("expense" / "schedule") — those sections switch to "แนบไฟล์ PDF" mode and
+    skip the generated tables; other sections keep "สร้างในระบบ" + row filling.
+    mode == "annex_pdf" → attach-only (no field fills, both sections upload).
+    """
     actions: List[DOMAction] = []
     breakdown = extracted.get("breakdown") or []
     schedule = extracted.get("schedule_activities") or []
+    attach_only = mode == "annex_pdf"
+    attach = set(attach_sections or [])
+    if attach_only:
+        attach = {"expense", "schedule"}
 
-    # ---- Mode annex_pdf: attach-only (radios "แนบไฟล์ PDF" + file_attach) ----
-    # อยู่บนสุด — ไม่กรอกฟิลด์อื่น (โหมด "อัปโหลด PDF แนบเอง" ต้องไม่ล้างค่าเดิม)
-    if mode == "annex_pdf":
+    # ---- Section 1-4: ข้อมูล + เนื้อหา (ข้ามใน attach-only) ----
+    if not attach_only:
+        # ACC select: match option containing budget year suffix, e.g. "RSC-68_..._สกสว"
+        yr = _budget_year(extracted)
+        if yr:
+            actions.append(_act("#acc-field", "set_select", yr, delay_ms=200, label="รหัสงบประมาณ (ACC)"))
+        actions.append(_act("#project-document-number", "set_value", extracted.get("doc_number_tail", ""),
+                             label="เลขที่หนังสือ", key="doc_number_tail"))
+        actions.append(_act("#project-document-date", "set_value", extracted.get("doc_date_iso", ""),
+                             label="วันที่หนังสือ", key="doc_date_iso"))
+        if extracted.get("contact_phone"):
+            actions.append(_act("#project-document-contact-phone", "set_value", extracted.get("contact_phone", ""),
+                                 label="โทรศัพท์สำหรับติดต่อในหนังสือ", key="contact_phone"))
+
+        # ---- Section 2: เนื้อหาบันทึกข้อความ ----
+        if extracted.get("project_context"):
+            actions.append(_act("#backgroundContext-field", "set_value", extracted.get("project_context", ""),
+                                 label="ที่มาและบริบทของโครงการ", key="project_context"))
+        if extracted.get("project_objective"):
+            # วัตถุประสงค์: React auto-ID (textarea-19 -> textarea-63) เปลี่ยนทุก build
+            # -> ใช้ label ภาษาไทยเป็นตัวชี้หลัก (selector ว่าง)
+            actions.append(_act("", "set_value", extracted.get("project_objective", ""),
+                                 label="วัตถุประสงค์", key="project_objective"))
+        if extracted.get("requester_name"):
+            actions.append(_act("#project-applicant-name", "set_value", extracted.get("requester_name", ""),
+                                 label="ชื่อ-นามสกุล", key="requester_name", skip_if_value_present=True))
+        if extracted.get("requester_position"):
+            actions.append(_act("#project-applicant-position", "set_value", extracted.get("requester_position", ""),
+                                 label="ตำแหน่ง", key="requester_position", skip_if_value_present=True))
+        actions.append(_act("", "set_value", extracted.get("action_verb", "ดำเนินงาน"),
+                             label="คำกริยาดำเนินการ", key="action_verb"))
+        if extracted.get("project_title"):
+            actions.append(_act("", "set_value", extracted.get("project_title", ""),
+                                 label="ชื่อโครงการ/โครงการย่อย", key="project_title"))
+        if extracted.get("start_date_iso"):
+            actions.append(_act("#project-location-shared-start-date", "set_value", extracted.get("start_date_iso", ""),
+                                 label="วันที่เริ่มต้นของทุกสถานที่", key="start_date_iso"))
+        if extracted.get("end_date_iso"):
+            actions.append(_act("#project-location-shared-end-date", "set_value", extracted.get("end_date_iso", ""),
+                                 label="วันที่สิ้นสุดของทุกสถานที่", key="end_date_iso"))
+        if extracted.get("location_name"):
+            actions.append(_act("#project-location-0-location", "set_value", extracted.get("location_name", ""),
+                                 label="สถานที่ดำเนินโครงการ", key="location_name"))
+        if extracted.get("province_name"):
+            actions.append(_act("#project-location-0-province", "set_value", extracted.get("province_name", ""),
+                                 label="จังหวัด", key="province_name"))
+        if extracted.get("target_group_name"):
+            actions.append(_act("#target-group-name-project-target-group-2", "set_value",
+                                 extracted.get("target_group_name", ""), label="ชื่อกลุ่มเป้าหมาย", key="target_group_name"))
+        if extracted.get("target_group_quantity"):
+            actions.append(_act("#target-group-quantity-project-target-group-2", "set_value",
+                                 extracted.get("target_group_quantity", ""), label="จำนวน", key="target_group_quantity"))
+        if extracted.get("target_group_unit"):
+            actions.append(_act("#target-group-unit-project-target-group-2", "set_value",
+                                 extracted.get("target_group_unit", ""), label="หน่วย", key="target_group_unit"))
+        if extracted.get("action_details"):
+            actions.append(_act("#project-additional-details", "set_value", extracted.get("action_details", ""),
+                                 label="ข้อความชี้แจงเพิ่มเติมหลังกลุ่มเป้าหมาย", key="action_details"))
+
+        # ---- Section 4: วงเงินรวม ----
+        if extracted.get("budget_amount"):
+            # วงเงินรวม: React auto-ID (input-95 -> input-315) -> label-based
+            actions.append(_act("", "set_value", str(extracted.get("budget_amount", "")).replace(",", ""),
+                                 label="วงเงินรวม (บาท)", key="budget_amount"))
+
+    # ---- Section 5: เอกสารประกอบ (per-section attach) ----
+    # expense: มี PDF -> radio "แนบไฟล์ PDF" (upload); ไม่มี -> "สร้างในระบบ" + กรอกตาราง
+    if "expense" in attach:
         actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
                              meta={"scope_name": "expense-document-source"}))
+    else:
+        actions.append(_act("", "click", delay_ms=250, label="สร้างในระบบ",
+                             meta={"scope_name": "expense-document-source"}))
+        # ข้อมูลหัวเอกสารแนบ (เฉพาะตอนกรอกตารางในระบบ)
+        if extracted.get("project_title"):
+            actions.append(_act("#generated-expense-project-name", "set_value", extracted.get("project_title", ""),
+                                 label="ชื่อโครงการในเอกสาร"))
+        if extracted.get("agency_name"):
+            actions.append(_act("#generated-expense-department", "set_value", extracted.get("agency_name", ""),
+                                 label="หน่วยงาน"))
+        # ตารางค่าใช้จ่าย (เริ่มต้นมี 1 แถว -> คลิกเพิ่มถ้าจำเป็น)
+        # หมายเหตุ: expense-*/schedule-* เป็น ID ที่ app ตั้งชื่อเอง (เสถียร) —
+        # ไม่ต้องใช้ label (label fallback จะชี้ผิดแถวถ้า selector พัง)
+        for i, row in enumerate(breakdown):
+            if i > 0:
+                actions.append(_act("button", "click_button", "เพิ่มรายการ", delay_ms=350))
+            actions.append(_act(f"#expense-row-type-{i}", "set_select", "item"))
+            actions.append(_act(f"#expense-number-{i}", "set_value", str(i + 1)))
+            actions.append(_act(f"#expense-description-{i}", "set_value", row.get("รายการ", "")))
+            actions.append(_act(f"#expense-calculation-{i}", "set_value", row.get("รายละเอียด", "")))
+            amt = str(row.get("จำนวนเงิน (บาท)", "")).replace(",", "")
+            if amt:
+                actions.append(_act(f"#expense-loan-{i}", "set_value", amt))
+        if breakdown:
+            actions.append(_act("#generated-expense-notes", "set_value", "ขอถัวเฉลี่ยทุกรายการ", label="หมายเหตุ"))
+
+    # schedule: มี PDF -> upload; ไม่มี -> "สร้างในระบบ" + กรอกตาราง
+    if "schedule" in attach:
         actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
                              meta={"scope_name": "schedule-document-source"}))
+    else:
+        actions.append(_act("", "click", delay_ms=250, label="สร้างในระบบ",
+                             meta={"scope_name": "schedule-document-source"}))
+        # ตารางกำหนดการ (เริ่มต้นมี 1 วัน/1 กิจกรรม -> คลิกเพิ่มถ้าจำเป็น)
+        if extracted.get("project_title"):
+            actions.append(_act("#generated-schedule-title", "set_value",
+                                 f"กำหนดการ{extracted.get('project_title', '')}", label="ชื่อกำหนดการ"))
+        if extracted.get("schedule_text"):
+            actions.append(_act("#generated-schedule-subtitle", "set_value",
+                                 extracted.get("schedule_text", ""), label="รายละเอียดใต้ชื่อเรื่อง"))
+        for di, day in enumerate(schedule):
+            if di > 0:
+                actions.append(_act("button", "click_button", "เพิ่มวันหรือช่วงกิจกรรม", delay_ms=350))
+            actions.append(_act(f"#schedule-date-{di}", "set_value", day.get("date_title", "")))
+            if day.get("location"):
+                actions.append(_act(f"#schedule-location-{di}", "set_value", day.get("location", "")))
+            for ai, act in enumerate(day.get("items") or []):
+                if ai > 0:
+                    # เพิ่มกิจกรรมภายในวันปัจจุบัน: scope ในการ์ดของวันนี้
+                    actions.append(_act(
+                        f"article:has(#schedule-date-{di})", "click_button", "เพิ่มกิจกรรมในช่วงนี้", delay_ms=300))
+                actions.append(_act(f"#schedule-time-{di}-{ai}", "set_value", act.get("time", "")))
+                actions.append(_act(f"#schedule-activity-{di}-{ai}", "set_value", act.get("activity", "")))
+        if schedule:
+            actions.append(_act("#generated-schedule-notes", "set_value", "หมายเหตุ: กำหนดการอาจปรับตามความเหมาะสม"))
+
+    # มี PDF ที่จะแนบอย่างน้อย 1 ชิ้น -> file_attach หนึ่งครั้ง (ช่อง multiple)
+    if attach:
         actions.append(_act('input[type="file"]', "file_attach", label="เอกสารเพิ่มเติม", meta={
-            "filename": "ประมาณการค่าใช้จ่ายและกำหนดการ.pdf",
             "mime": "application/pdf",
-            "note": "value จะถูกแทนด้วย base64 ของ pdf (จาก backend หรือ PDF ที่ผู้ใช้เลือก) ก่อนส่งให้ content script",
+            "note": "meta.files = [{base64, filename, mime}] จะถูกเติมโดย sidepanel ก่อนส่งให้ content script",
         }))
-        return actions
-
-    # ---- Section 1: ข้อมูลหนังสือ ----
-    # ACC select: match option containing budget year suffix, e.g. "RSC-68_..._สกสว"
-    yr = _budget_year(extracted)
-    if yr:
-        actions.append(_act("#acc-field", "set_select", yr, delay_ms=200, label="รหัสงบประมาณ (ACC)"))
-    actions.append(_act("#project-document-number", "set_value", extracted.get("doc_number_tail", ""),
-                         label="เลขที่หนังสือ", key="doc_number_tail"))
-    actions.append(_act("#project-document-date", "set_value", extracted.get("doc_date_iso", ""),
-                         label="วันที่หนังสือ", key="doc_date_iso"))
-    if extracted.get("contact_phone"):
-        actions.append(_act("#project-document-contact-phone", "set_value", extracted.get("contact_phone", ""),
-                             label="โทรศัพท์สำหรับติดต่อในหนังสือ", key="contact_phone"))
-
-    # ---- Section 2: เนื้อหาบันทึกข้อความ ----
-    if extracted.get("project_context"):
-        actions.append(_act("#backgroundContext-field", "set_value", extracted.get("project_context", ""),
-                             label="ที่มาและบริบทของโครงการ", key="project_context"))
-    if extracted.get("project_objective"):
-        # วัตถุประสงค์: React auto-ID (textarea-19 -> textarea-63) เปลี่ยนทุก build
-        # -> ใช้ label ภาษาไทยเป็นตัวชี้หลัก (selector ว่าง)
-        actions.append(_act("", "set_value", extracted.get("project_objective", ""),
-                             label="วัตถุประสงค์", key="project_objective"))
-    if extracted.get("requester_name"):
-        actions.append(_act("#project-applicant-name", "set_value", extracted.get("requester_name", ""),
-                             label="ชื่อ-นามสกุล", key="requester_name", skip_if_value_present=True))
-    if extracted.get("requester_position"):
-        actions.append(_act("#project-applicant-position", "set_value", extracted.get("requester_position", ""),
-                             label="ตำแหน่ง", key="requester_position", skip_if_value_present=True))
-    actions.append(_act("", "set_value", extracted.get("action_verb", "ดำเนินงาน"),
-                         label="คำกริยาดำเนินการ", key="action_verb"))
-    if extracted.get("project_title"):
-        actions.append(_act("", "set_value", extracted.get("project_title", ""),
-                             label="ชื่อโครงการ/โครงการย่อย", key="project_title"))
-    if extracted.get("start_date_iso"):
-        actions.append(_act("#project-location-shared-start-date", "set_value", extracted.get("start_date_iso", ""),
-                             label="วันที่เริ่มต้นของทุกสถานที่", key="start_date_iso"))
-    if extracted.get("end_date_iso"):
-        actions.append(_act("#project-location-shared-end-date", "set_value", extracted.get("end_date_iso", ""),
-                             label="วันที่สิ้นสุดของทุกสถานที่", key="end_date_iso"))
-    if extracted.get("location_name"):
-        actions.append(_act("#project-location-0-location", "set_value", extracted.get("location_name", ""),
-                             label="สถานที่ดำเนินโครงการ", key="location_name"))
-    if extracted.get("province_name"):
-        actions.append(_act("#project-location-0-province", "set_value", extracted.get("province_name", ""),
-                             label="จังหวัด", key="province_name"))
-    if extracted.get("target_group_name"):
-        actions.append(_act("#target-group-name-project-target-group-2", "set_value",
-                             extracted.get("target_group_name", ""), label="ชื่อกลุ่มเป้าหมาย", key="target_group_name"))
-    if extracted.get("target_group_quantity"):
-        actions.append(_act("#target-group-quantity-project-target-group-2", "set_value",
-                             extracted.get("target_group_quantity", ""), label="จำนวน", key="target_group_quantity"))
-    if extracted.get("target_group_unit"):
-        actions.append(_act("#target-group-unit-project-target-group-2", "set_value",
-                             extracted.get("target_group_unit", ""), label="หน่วย", key="target_group_unit"))
-    if extracted.get("action_details"):
-        actions.append(_act("#project-additional-details", "set_value", extracted.get("action_details", ""),
-                             label="ข้อความชี้แจงเพิ่มเติมหลังกลุ่มเป้าหมาย", key="action_details"))
-
-    # ---- Section 4: วงเงินรวม ----
-    if extracted.get("budget_amount"):
-        # วงเงินรวม: React auto-ID (input-95 -> input-315) -> label-based
-        actions.append(_act("", "set_value", str(extracted.get("budget_amount", "")).replace(",", ""),
-                             label="วงเงินรวม (บาท)", key="budget_amount"))
-
-    # ---- Section 5: เอกสารประกอบ ----
-    # (annex_pdf ถูก return ไปแล้วด้านบน — ถึงตรงนี้คือ full_table เท่านั้น)
-
-    # ---- Mode full_table: expense + schedule ถูกกรอกในระบบ ----
-    # Radio → สร้างในระบบ (label + scope name กัน React ID เปลี่ยน)
-    actions.append(_act("", "click", delay_ms=250, label="สร้างในระบบ",
-                         meta={"scope_name": "expense-document-source"}))
-    actions.append(_act("", "click", delay_ms=250, label="สร้างในระบบ",
-                         meta={"scope_name": "schedule-document-source"}))
-
-    # ข้อมูลหัวเอกสารแนบ
-    if extracted.get("project_title"):
-        actions.append(_act("#generated-expense-project-name", "set_value", extracted.get("project_title", ""),
-                             label="ชื่อโครงการในเอกสาร"))
-    if extracted.get("agency_name"):
-        actions.append(_act("#generated-expense-department", "set_value", extracted.get("agency_name", ""),
-                             label="หน่วยงาน"))
-
-    # ตารางค่าใช้จ่าย (เริ่มต้นมี 1 แถว -> คลิกเพิ่มถ้าจำเป็น)
-    # หมายเหตุ: expense-*/schedule-* เป็น ID ที่ app ตั้งชื่อเอง (เสถียร) —
-    # ไม่ต้องใช้ label (label fallback จะชี้ผิดแถวถ้า selector พัง)
-    for i, row in enumerate(breakdown):
-        if i > 0:
-            actions.append(_act("button", "click_button", "เพิ่มรายการ", delay_ms=350))
-        actions.append(_act(f"#expense-row-type-{i}", "set_select", "item"))
-        actions.append(_act(f"#expense-number-{i}", "set_value", str(i + 1)))
-        actions.append(_act(f"#expense-description-{i}", "set_value", row.get("รายการ", "")))
-        actions.append(_act(f"#expense-calculation-{i}", "set_value", row.get("รายละเอียด", "")))
-        amt = str(row.get("จำนวนเงิน (บาท)", "")).replace(",", "")
-        if amt:
-            actions.append(_act(f"#expense-loan-{i}", "set_value", amt))
-    if breakdown:
-        actions.append(_act("#generated-expense-notes", "set_value", "ขอถัวเฉลี่ยทุกรายการ", label="หมายเหตุ"))
-
-    # ตารางกำหนดการ (เริ่มต้นมี 1 วัน/1 กิจกรรม -> คลิกเพิ่มถ้าจำเป็น)
-    if extracted.get("project_title"):
-        actions.append(_act("#generated-schedule-title", "set_value",
-                             f"กำหนดการ{extracted.get('project_title', '')}", label="ชื่อกำหนดการ"))
-    if extracted.get("schedule_text"):
-        actions.append(_act("#generated-schedule-subtitle", "set_value",
-                             extracted.get("schedule_text", ""), label="รายละเอียดใต้ชื่อเรื่อง"))
-
-    for di, day in enumerate(schedule):
-        if di > 0:
-            actions.append(_act("button", "click_button", "เพิ่มวันหรือช่วงกิจกรรม", delay_ms=350))
-        actions.append(_act(f"#schedule-date-{di}", "set_value", day.get("date_title", "")))
-        if day.get("location"):
-            actions.append(_act(f"#schedule-location-{di}", "set_value", day.get("location", "")))
-        for ai, act in enumerate(day.get("items") or []):
-            if ai > 0:
-                # เพิ่มกิจกรรมภายในวันปัจจุบัน: scope ในการ์ดของวันนี้
-                actions.append(_act(
-                    f"article:has(#schedule-date-{di})", "click_button", "เพิ่มกิจกรรมในช่วงนี้", delay_ms=300))
-            actions.append(_act(f"#schedule-time-{di}-{ai}", "set_value", act.get("time", "")))
-            actions.append(_act(f"#schedule-activity-{di}-{ai}", "set_value", act.get("activity", "")))
-    if schedule:
-        actions.append(_act("#generated-schedule-notes", "set_value", "หมายเหตุ: กำหนดการอาจปรับตามความเหมาะสม"))
 
     return actions
 
@@ -314,11 +323,14 @@ def _build_json_mappings(profile: Dict[str, Any], extracted: Dict[str, Any], mod
 
 def build_field_mappings(extracted: Dict[str, Any], mode: str, target_url: str,
                          page_snapshot: Optional[list] = None,
-                         force_profile_id: Optional[str] = None) -> Tuple[List[DOMAction], List[str], Dict[str, Any]]:
+                         force_profile_id: Optional[str] = None,
+                         attach_sections: Optional[List[str]] = None) -> Tuple[List[DOMAction], List[str], Dict[str, Any]]:
     """Build DOMAction list for the target page.
 
     force_profile_id: เลือก profile ตรงๆ (ไม่ resolve จาก URL/snapshot) —
     ใช้กับ /api/v1/fill ที่ผู้ใช้/หน้าเว็บระบุฟอร์มชัดเจนแล้ว.
+    attach_sections: ["expense"|"schedule"] — section ที่ผู้ใช้แนบ PDF เอง
+    (สลับเป็นโหมด upload + ข้ามการกรอกตาราง).
 
     Returns (mappings, warnings, info) where info carries profile_id,
     form_type, page_match_confidence and editable_fields (for the review card).
@@ -347,7 +359,7 @@ def build_field_mappings(extracted: Dict[str, Any], mode: str, target_url: str,
 
     builder_name = profile.get("builder")
     if builder_name:
-        mappings = BUILDERS[builder_name](extracted, mode)
+        mappings = BUILDERS[builder_name](extracted, mode, attach_sections)
         editable = _collect_editable_from_built(mappings)
     else:
         mappings, editable = _build_json_mappings(profile, extracted, mode)

@@ -250,28 +250,40 @@
     return null;
   }
 
-  async function fileAttach(selector, index, base64Data, filename, mime, label) {
+  async function fileAttach(selector, index, base64Data, filename, mime, label, files) {
     const el = await resolveFileInput(selector, index, label);
     if (!el) return { ok: false, reason: "ไม่พบ <input type=file> (ลองแล้วทั้ง input[type=file] และ input[accept*=pdf])" };
 
     el.scrollIntoView({ block: "center", behavior: "instant" });
 
-    const binary = atob(base64Data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const file = new File([bytes], filename || "annex.pdf", { type: mime || "application/pdf" });
-
     const dt = new DataTransfer();
-    dt.items.add(file);
+    const add = (b64, name, mimeType) => {
+      if (!b64) return;
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      dt.items.add(new File([bytes], name || "annex.pdf", { type: mimeType || "application/pdf" }));
+    };
+
+    // Multiple files (meta.files) — ช่อง file input เป็น multiple แนบทีละหลายไฟล์
+    if (files && files.length) {
+      files.forEach((f) => add(f.base64, f.filename, f.mime));
+    } else {
+      add(base64Data, filename, mime);
+    }
+    if (dt.items.length === 0) {
+      return { ok: false, reason: "ไม่มีไฟล์ให้แนบ" };
+    }
+
     el.files = dt.files;
     el.dispatchEvent(new Event("change", { bubbles: true }));
     highlight(el);
 
-    // Verify the framework actually received the file
+    // Verify the framework actually received the file(s)
     if (!el.files || el.files.length === 0) {
       return { ok: false, reason: "ตั้งค่าไฟล์ไม่สำเร็จ (files ว่างหลัง dispatch change)" };
     }
-    return { ok: true, filename: file.name, size: file.size };
+    return { ok: true, count: dt.items.length };
   }
 
   // --------------------------------------------------------------------------
@@ -312,7 +324,7 @@
         }
 
         if (act === "file_attach") {
-          const res = await fileAttach(selector, index, value, meta.filename, meta.mime, label);
+          const res = await fileAttach(selector, index, value, meta.filename, meta.mime, label, meta.files);
           if (res.ok) filled++;
           else {
             errors.push(res.reason);

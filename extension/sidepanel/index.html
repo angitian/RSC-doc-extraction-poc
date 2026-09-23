@@ -35,53 +35,27 @@
     </div>
   </details>
 
-  <!-- Source selector: สกัด+Auto-fill หรือ อัปโหลด PDF เอง -->
-  <section id="source-section" class="card">
-    <h2>เลือกแหล่งข้อมูล</h2>
-    <label class="radio-row">
-      <input type="radio" name="source" value="auto" checked />
-      <span><b>📄 สกัดจากเอกสาร (Auto-fill)</b><small>ลาก DOCX/PDF/XLSX → สกัด → กรอกฟิลด์อัตโนมัติ</small></span>
-    </label>
-    <label class="radio-row" id="source-upload-row">
-      <input type="radio" name="source" value="upload" />
-      <span><b>📎 อัปโหลด PDF แนบเอง</b><small>เลือก PDF ที่เตรียมไว้ → แนบช่องเอกสารโดยตรง (เร็ว)</small></span>
-    </label>
+  <!-- เอกสารที่ใช้สกัด (Auto-fill) -->
+  <section class="card">
+    <h2>📄 เอกสารที่ใช้สกัด</h2>
+    <div id="drop-zone" class="drop-zone" tabindex="0">
+      <div class="dz-icon">📂</div>
+      <p><b>ลากไฟล์ .docx / .pdf / .xlsx มาวาง</b><br/>หรือคลิกเพื่อเลือก (สกัดข้อมูล)</p>
+    </div>
+    <input id="file-input" type="file" accept=".docx,.pdf,.xlsx" hidden />
+    <div id="docx-file-info" class="hint"></div>
   </section>
 
-  <!-- Auto-fill area -->
-  <div id="auto-area">
-    <section id="drop-zone" class="drop-zone" tabindex="0">
-      <div class="dz-icon">📂</div>
-      <p><b>ลากไฟล์ .docx / .pdf / .xlsx มาวาง</b><br/>หรือคลิกเพื่อเลือกไฟล์</p>
-      <input id="file-input" type="file" accept=".docx,.pdf,.xlsx" hidden />
-    </section>
-
-    <!-- Mode selector -->
-    <section id="mode-section" class="card hidden">
-      <h2>โหมดการกรอก</h2>
-      <label class="radio-row">
-        <input type="radio" name="mode" value="full_table" checked />
-        <span><b>Full Dynamic Table</b><small>แตกตารางค่าใช้จ่าย/กำหนดการกรอกลงเว็บ</small></span>
-      </label>
-      <label class="radio-row">
-        <input type="radio" name="mode" value="annex_pdf" />
-        <span><b>Summary + PDF Annex</b><small>กรอกเฉพาะหัวข้อหลัก + แนบ PDF เอกสารแนบ</small></span>
-      </label>
-    </section>
-  </div>
-
-  <!-- Upload PDF myself area -->
-  <div id="upload-area" class="hidden">
-    <section class="card">
-      <div id="pdf-zone" class="drop-zone" tabindex="0">
-        <div class="dz-icon">📎</div>
-        <p><b>เลือกไฟล์ PDF ที่เตรียมไว้</b><br/>คลิกเพื่อเลือก (ไม่มีการสกัด — แนบตรงๆ)</p>
-      </div>
-      <input id="pdf-input" type="file" accept=".pdf" hidden />
-      <div id="pdf-file-info" class="hint"></div>
-      <button id="btn-pdf-attach" class="btn btn-primary" type="button">🚀 แนบ PDF ลงแบบฟอร์ม</button>
-    </section>
-  </div>
+  <!-- PDF เอกสารแนบ (แยกกล่อง ประมาณการ/กำหนดการ) -->
+  <section id="pdf-card" class="card">
+    <h2>📎 PDF เอกสารแนบ (ไม่บังคับ)</h2>
+    <div id="pdf-zone" class="drop-zone" tabindex="0">
+      <div class="dz-icon">📎</div>
+      <p><b>ลาก PDF มาวาง (หลายไฟล์ได้)</b><br/>ระบุว่าเป็น ประมาณการค่าใช้จ่าย หรือ กำหนดการ</p>
+    </div>
+    <input id="pdf-input" type="file" accept=".pdf" multiple hidden />
+    <div id="pdf-list" class="pdf-list"></div>
+  </section>
 
   <!-- Quick Form (B) — กรอกตรงๆ ไม่ต้องมีเอกสาร -->
   <details id="quick-form" class="card">
@@ -117,7 +91,6 @@
     <div class="row">
       <button id="btn-excel" class="btn btn-outline" type="button">📊 Excel</button>
       <button id="btn-tsv" class="btn btn-outline" type="button">📋 คัดลอก TSV</button>
-      <button id="btn-pdf" class="btn btn-outline" type="button">📄 PDF แนบ</button>
     </div>
     <button id="btn-capture" class="btn btn-ghost" type="button">🔍 จับฟอร์ม (debug DOM)</button>
   </section>

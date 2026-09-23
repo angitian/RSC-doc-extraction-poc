@@ -113,6 +113,7 @@ async def extract(
     doc_type: str = Form(""),
     page_snapshot: str = Form(""),
     outputs: str = Form("excel"),  # comma list: excel | pdf (PDF เฉพาะเมื่อขอ)
+    attach_sections: str = Form(""),  # comma list: expense | schedule (ผู้ใช้แนบ PDF เอง)
 ):
     if mode not in ("full_table", "annex_pdf"):
         raise HTTPException(status_code=400, detail=f"mode ไม่ถูกต้อง: {mode} (ต้องเป็น full_table หรือ annex_pdf)")
@@ -137,8 +138,9 @@ async def extract(
 
     rollup = extract_budget_rollup(extracted, extracted.get("breakdown") or [])
 
+    attach = [s.strip().lower() for s in attach_sections.split(",") if s.strip()]
     field_mappings, map_warnings, profile_info = build_field_mappings(
-        extracted, mode, target_url, page_snapshot=snapshot)
+        extracted, mode, target_url, page_snapshot=snapshot, attach_sections=attach or None)
     warnings.extend(map_warnings)
 
     summary = _build_summary(extracted, rollup, doc_type, confidence)

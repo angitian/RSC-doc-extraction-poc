@@ -15,6 +15,14 @@ const els = {
   apiSaved: $("#api-saved"),
   dropZone: $("#drop-zone"),
   fileInput: $("#file-input"),
+  sourceSection: $("#source-section"),
+  sourceUploadRow: $("#source-upload-row"),
+  autoArea: $("#auto-area"),
+  uploadArea: $("#upload-area"),
+  pdfZone: $("#pdf-zone"),
+  pdfInput: $("#pdf-input"),
+  pdfFileInfo: $("#pdf-file-info"),
+  btnPdfAttach: $("#btn-pdf-attach"),
   modeSection: $("#mode-section"),
   reviewCard: $("#review-card"),
   rcType: $("#rc-type"),
@@ -44,6 +52,7 @@ let currentResponse = null; // last ExtractionResponse
 let currentTargetUrl = "";
 let lastFile = null; // re-extract when the mode changes
 let userEdits = {}; // editable review card overrides: {key: value}
+let ownPdf = null; // {base64, name} for "อัปโหลด PDF แนบเอง" mode
 
 // Map raw select values to Thai labels for the editable review card
 const SELECT_LABELS = {
@@ -147,6 +156,98 @@ els.fileInput.addEventListener("change", (e) => {
 });
 
 // ---------------------------------------------------------------------------
+// Source selector: Auto-fill (สกัด) vs อัปโหลด PDF แนบเอง
+// ---------------------------------------------------------------------------
+document.querySelectorAll('input[name="source"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    const isAuto = document.querySelector('input[name="source"]:checked').value === "auto";
+    els.autoArea.classList.toggle("hidden", !isAuto);
+    els.uploadArea.classList.toggle("hidden", isAuto);
+  });
+});
+
+els.pdfZone.addEventListener("click", () => els.pdfInput.click());
+els.pdfZone.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    els.pdfInput.click();
+  }
+});
+els.pdfInput.addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    els.pdfFileInfo.textContent = "⚠️ ต้องเป็นไฟล์ .pdf";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const b64 = String(reader.result).split(",")[1] || "";
+    ownPdf = { base64: b64, name: file.name };
+    els.pdfFileInfo.textContent = `✅ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+  };
+  reader.readAsDataURL(file);
+});
+
+els.btnPdfAttach.addEventListener("click", async () => {
+  if (!ownPdf) {
+    setStatus("เลือกไฟล์ PDF ก่อน", "err");
+    return;
+  }
+  const tab = await getActiveTab();
+  if (!tab.id) {
+    setStatus("ไม่พบแท็บที่ใช้งาน", "err");
+    return;
+  }
+  currentTargetUrl = tab.url || "";
+  const snapshot = await capturePageSnapshot(tab.id);
+  setStatus("เตรียมแนบ PDF...", "busy");
+  try {
+    const res = await fetch(`${getApiUrl()}/api/v1/fill`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profile_id: "", // resolve by page snapshot
+        target_url: currentTargetUrl,
+        page_snapshot: snapshot,
+        mode: "annex_pdf",
+        values: {},
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.field_mappings.some((m) => m.action === "file_attach")) {
+      throw new Error("ฟอร์มนี้ไม่มีช่องอัปโหลด PDF (โหมดนี้ใช้ไม่ได้)");
+    }
+    // ใช้ PDF ของผู้ใช้แทน placeholder
+    const mappings = data.field_mappings.map((m) =>
+      m.action === "file_attach" ? { ...m, value: ownPdf.base64, meta: { ...m.meta, filename: ownPdf.name, mime: "application/pdf" } } : m
+    );
+    els.btnPdfAttach.disabled = true;
+    const msg = await chrome.runtime.sendMessage({
+      action: "FILL_FORM",
+      tabId: tab.id,
+      payload: { field_mappings: mappings, annex_base64: "" },
+    });
+    if (msg && msg.ok) {
+      const r = msg.result;
+      const ok = r && typeof r.filled === "number" ? r.filled : 0;
+      const err = r && typeof r.failed === "number" ? r.failed : 0;
+      setStatus(`แนบ PDF สำเร็จ (${ok}/${r.total})`, err ? "busy" : "ok");
+      log(`📎 แนบ PDF "${ownPdf.name}" ลงฟอร์มแล้ว${err ? ` | ❌ ${err}` : ""}`, err ? "err" : "ok");
+    } else {
+      setStatus("แนบ PDF ไม่สำเร็จ", "err");
+      log("❌ " + (msg && msg.error ? msg.error : ""), "err");
+    }
+  } catch (err) {
+    setStatus("แนบ PDF ไม่สำเร็จ", "err");
+    log("❌ " + (err && err.message ? err.message : String(err)), "err");
+  } finally {
+    els.btnPdfAttach.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Extraction (uploaded file)
 // ---------------------------------------------------------------------------
 async function handleFile(file) {
@@ -158,15 +259,18 @@ async function handleFile(file) {
   }
 
   const mode = document.querySelector('input[name="mode"]:checked').value;
+  // PDF สร้างเฉพาะเมื่อจำเป็น (annex_pdf ต้องใช้แนบ) — full_table ไม่สร้าง (เร็ว)
+  const outputs = mode === "annex_pdf" ? "pdf,excel" : "excel";
   const tab = await getActiveTab();
   currentTargetUrl = tab.url || "";
 
   setStatus("กำลังสกัดข้อมูล...", "busy");
-  log(`ยิง API: ${getApiUrl()}/api/v1/extract (${file.name}, mode=${mode})`);
+  log(`ยิง API: ${getApiUrl()}/api/v1/extract (${file.name}, mode=${mode}, outputs=${outputs})`);
 
   const form = new FormData();
   form.append("file", file);
   form.append("mode", mode);
+  form.append("outputs", outputs);
   form.append("target_url", currentTargetUrl);
   const snapshot = await capturePageSnapshot(tab.id);
   if (snapshot && snapshot.length) form.append("page_snapshot", JSON.stringify(snapshot));
@@ -216,16 +320,25 @@ function renderReview(data) {
   els.reviewCard.classList.remove("hidden");
   els.actionHub.classList.remove("hidden");
 
-  // Conference form has no PDF upload — hide the annex_pdf mode
+  // Conference form has no PDF upload — hide annex mode + "อัปโหลดเอง"
   const annexRadio = document.querySelector('input[name="mode"][value="annex_pdf"]');
   const annexLabel = annexRadio ? annexRadio.closest(".radio-row") : null;
+  const isConference = data.profile_id === "rsc_conference";
   if (annexLabel) {
-    const isConference = data.profile_id === "rsc_conference";
     annexLabel.style.display = isConference ? "none" : "";
     if (isConference && annexRadio.checked) {
       document.querySelector('input[name="mode"][value="full_table"]').checked = true;
     }
   }
+  els.sourceUploadRow.style.display = isConference ? "none" : "";
+  if (isConference) {
+    document.querySelector('input[name="source"][value="auto"]').checked = true;
+    els.autoArea.classList.remove("hidden");
+    els.uploadArea.classList.add("hidden");
+  }
+
+  // PDF button only when a PDF was actually generated
+  els.btnPdf.style.display = data.pdf_annex_base64 ? "" : "none";
 
   const s = data.summary || {};
   const info = [
@@ -352,7 +465,10 @@ function downloadBase64(base64, filename, mime) {
 }
 
 els.btnExcel.addEventListener("click", () => {
-  if (!currentResponse || !currentResponse.excel_filled_base64) return;
+  if (!currentResponse || !currentResponse.excel_filled_base64) {
+    log("ℹ️ ไม่มีไฟล์ Excel ในผลลัพธ์นี้ (Quick Form/อัปโหลดเองไม่สร้าง Excel)", "info");
+    return;
+  }
   downloadBase64(currentResponse.excel_filled_base64, currentResponse.excel_filled_filename || "ข้อมูล.xlsx",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   log("📊 ดาวน์โหลด Excel แล้ว", "ok");

@@ -112,6 +112,7 @@ async def extract(
     target_url: str = Form(""),
     doc_type: str = Form(""),
     page_snapshot: str = Form(""),
+    outputs: str = Form("excel"),  # comma list: excel | pdf (PDF เฉพาะเมื่อขอ)
 ):
     if mode not in ("full_table", "annex_pdf"):
         raise HTTPException(status_code=400, detail=f"mode ไม่ถูกต้อง: {mode} (ต้องเป็น full_table หรือ annex_pdf)")
@@ -142,20 +143,23 @@ async def extract(
 
     summary = _build_summary(extracted, rollup, doc_type, confidence)
 
-    # ---- Output assets (base64) ----
+    # ---- Output assets (base64) — PDF สร้างเฉพาะเมื่อขอ (เร็วขึ้น 90%) ----
+    requested = {o.strip().lower() for o in outputs.split(",") if o.strip()}
     pdf_b64: str | None = None
     excel_b64: str | None = None
-    try:
-        pdf_bytes = generate_annex_pdf_bytes(extracted, rollup)
-        pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
-    except Exception as e:  # noqa: BLE001
-        warnings.append(f"สร้าง PDF แนบไม่สำเร็จ: {str(e)}")
+    if "pdf" in requested:
+        try:
+            pdf_bytes = generate_annex_pdf_bytes(extracted, rollup)
+            pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+        except Exception as e:  # noqa: BLE001
+            warnings.append(f"สร้าง PDF แนบไม่สำเร็จ: {str(e)}")
 
-    try:
-        excel_bytes = generate_excel_bytes(extracted, rollup)
-        excel_b64 = base64.b64encode(excel_bytes).decode("ascii")
-    except Exception as e:  # noqa: BLE001
-        warnings.append(f"สร้าง Excel ไม่สำเร็จ: {str(e)}")
+    if "excel" in requested:
+        try:
+            excel_bytes = generate_excel_bytes(extracted, rollup)
+            excel_b64 = base64.b64encode(excel_bytes).decode("ascii")
+        except Exception as e:  # noqa: BLE001
+            warnings.append(f"สร้าง Excel ไม่สำเร็จ: {str(e)}")
 
     # ---- Raw tables for TSV ----
     raw_tables: Dict[str, list] = {
@@ -239,16 +243,24 @@ async def fill(values: Dict[str, Any]):
     """Build field_mappings directly from values (no document required).
 
     Body: {"target_url": "...", "profile_id": "rsc_conference",
-           "page_snapshot": [...], "values": {"event_title": "...", "per_diem": 200, ...}}
+           "page_snapshot": [...], "mode": "full_table"|"annex_pdf",
+           "values": {"event_title": "...", "per_diem": 200, ...}}
+
+    mode=annex_pdf + empty values → attach-only mappings (radios "แนบไฟล์ PDF"
+    + file_attach) — ใช้เมื่อผู้ใช้เลือก "อัปโหลด PDF เอง" (ไม่ต้องสกัด, เร็ว)
     """
     target_url = str(values.get("target_url") or "")
     profile_id = str(values.get("profile_id") or "")
     snapshot = values.get("page_snapshot") or None
+    mode = str(values.get("mode") or "full_table")
+    if mode not in ("full_table", "annex_pdf"):
+        mode = "full_table"
     vals: Dict[str, Any] = dict(values.get("values") or {})
 
-    profile = next((p for p in PROFILES if p.get("profile_id") == profile_id), None)
-    if profile is None:
-        raise HTTPException(status_code=404, detail=f"ไม่พบ profile: {profile_id}")
+    if profile_id:
+        profile = next((p for p in PROFILES if p.get("profile_id") == profile_id), None)
+        if profile is None:
+            raise HTTPException(status_code=404, detail=f"ไม่พบ profile: {profile_id}")
 
     # Build a minimal extracted dict so the profile builder can run
     extracted: Dict[str, Any] = dict(vals)
@@ -259,7 +271,8 @@ async def fill(values: Dict[str, Any]):
     if not extracted.get("project_title"):
         extracted["project_title"] = extracted.get("event_title", "")
 
-    field_mappings, warnings, info = build_field_mappings(extracted, "full_table", target_url, page_snapshot=snapshot)
+    field_mappings, warnings, info = build_field_mappings(
+        extracted, mode, target_url, page_snapshot=snapshot, force_profile_id=profile_id or None)
     rollup = extract_budget_rollup(extracted, extracted.get("breakdown") or [])
     summary = _build_summary(extracted, rollup, info.get("form_type") or "manual", 1.0)
 

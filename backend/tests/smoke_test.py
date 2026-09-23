@@ -39,7 +39,7 @@ def run(path: str, mode: str = "full_table") -> int:
 
     doc_type, confidence = classify_document(extracted)
     rollup = extract_budget_rollup(extracted, extracted.get("breakdown") or [])
-    mappings, warnings = build_field_mappings(extracted, mode, "http://localhost/rsc-approval")
+    mappings, warnings, info = build_field_mappings(extracted, mode, "http://localhost/rsc-approval")
 
     excel_bytes = generate_excel_bytes(extracted, rollup)
     pdf_bytes = generate_annex_pdf_bytes(extracted, rollup)
@@ -70,9 +70,34 @@ def run(path: str, mode: str = "full_table") -> int:
     return 0
 
 
+def run_conference(path: str) -> int:
+    """Dedicated test for the conference-attendance form document."""
+    from app.extraction.dispatcher import extract_file
+
+    raw = open(path, "rb").read()
+    ext, doc_type, conf = extract_file(raw, ".docx")
+    print(f"conference doc_type: {doc_type} (conf {conf})")
+    assert doc_type == "conference_attendance", f"expected conference_attendance, got {doc_type}"
+    assert ext["budget_amount"] == "6600", f"budget should be 6600, got {ext.get('budget_amount')}"
+    assert ext["event_title"] and "อนุกรรมการ" in ext["event_title"], "event_title wrong"
+    assert ext["requester_name"] == "นายรณกร อำพันธ์ศรี", f"requester polluted: {ext.get('requester_name')}"
+    assert ext["department"] == "RSC" and ext["faculty"] == "สรบ"
+    assert ext["organizer"] and ext["province_name"]
+    assert len(ext.get("breakdown") or []) == 4, f"breakdown rows: {len(ext.get('breakdown') or [])}"
+    assert ext["vehicle_details"].count("\n") >= 1, "vehicle_details should have multiple lines"
+    assert ext["schedule_activities"] and len(ext["schedule_activities"][0]["items"]) >= 8
+    assert ext["expense_categories"]["vehicle"] == 6400.0
+    assert ext["doc_date"] == "1 ธันวาคม 2568", f"doc_date overwritten: {ext.get('doc_date')}"
+    print("conference extraction: ALL ASSERTIONS PASSED ✓")
+    return 0
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(2)
+    path = sys.argv[1]
+    if "ประชุม" in path or "conference" in path.lower():
+        sys.exit(run_conference(path))
     mode = sys.argv[2] if len(sys.argv) > 2 else "full_table"
-    sys.exit(run(sys.argv[1], mode))
+    sys.exit(run(path, mode))

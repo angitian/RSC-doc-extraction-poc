@@ -44,6 +44,20 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str) -> List[DOMAction]
     breakdown = extracted.get("breakdown") or []
     schedule = extracted.get("schedule_activities") or []
 
+    # ---- Mode annex_pdf: attach-only (radios "แนบไฟล์ PDF" + file_attach) ----
+    # อยู่บนสุด — ไม่กรอกฟิลด์อื่น (โหมด "อัปโหลด PDF แนบเอง" ต้องไม่ล้างค่าเดิม)
+    if mode == "annex_pdf":
+        actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
+                             meta={"scope_name": "expense-document-source"}))
+        actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
+                             meta={"scope_name": "schedule-document-source"}))
+        actions.append(_act('input[type="file"]', "file_attach", label="เอกสารเพิ่มเติม", meta={
+            "filename": "ประมาณการค่าใช้จ่ายและกำหนดการ.pdf",
+            "mime": "application/pdf",
+            "note": "value จะถูกแทนด้วย base64 ของ pdf (จาก backend หรือ PDF ที่ผู้ใช้เลือก) ก่อนส่งให้ content script",
+        }))
+        return actions
+
     # ---- Section 1: ข้อมูลหนังสือ ----
     # ACC select: match option containing budget year suffix, e.g. "RSC-68_..._สกสว"
     yr = _budget_year(extracted)
@@ -109,25 +123,7 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str) -> List[DOMAction]
                              label="วงเงินรวม (บาท)", key="budget_amount"))
 
     # ---- Section 5: เอกสารประกอบ ----
-    if mode == "annex_pdf":
-        # โครงสร้างจริงของฟอร์ม: radios "แนบไฟล์ PDF" (ค่า default อยู่แล้ว) ของ
-        # 1. ประมาณการค่าใช้จ่าย และ 2. กำหนดการ ไม่มี file input แยก —
-        # ไฟล์จะไปที่ช่องกลางเดียว "3. เอกสารเพิ่มเติม" (input[type=file] ตัวเดียว
-        # ทั้งหน้า, accept=application/pdf, multiple) แล้วระบบรวมเป็น "เอกสารแนบ"
-        # ต่อท้ายชุดเอกสาร → ฉีด PDF 1 ไฟล์ (มีทั้งประมาณการ+กำหนดการ) ครั้งเดียว
-        # Radio scope ตาม name เพื่อไม่สลับกันระหว่าง expense/schedule
-        actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
-                             meta={"scope_name": "expense-document-source"}))
-        actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
-                             meta={"scope_name": "schedule-document-source"}))
-        # selector ใช้แบบ generic (ไม่ hard-code React ID) — content script จะ
-        # fallback ไป input[type=file] / input[accept*=pdf] และ label ให้อัตโนมัติ
-        actions.append(_act('input[type="file"]', "file_attach", label="เอกสารเพิ่มเติม", meta={
-            "filename": "ประมาณการค่าใช้จ่ายและกำหนดการ.pdf",
-            "mime": "application/pdf",
-            "note": "value จะถูกแทนด้วย base64 ของ pdf_annex จาก backend โดย sidepanel ก่อนส่งให้ content script",
-        }))
-        return actions
+    # (annex_pdf ถูก return ไปแล้วด้านบน — ถึงตรงนี้คือ full_table เท่านั้น)
 
     # ---- Mode full_table: expense + schedule ถูกกรอกในระบบ ----
     # Radio → สร้างในระบบ (label + scope name กัน React ID เปลี่ยน)
@@ -317,13 +313,21 @@ def _build_json_mappings(profile: Dict[str, Any], extracted: Dict[str, Any], mod
 
 
 def build_field_mappings(extracted: Dict[str, Any], mode: str, target_url: str,
-                         page_snapshot: Optional[list] = None) -> Tuple[List[DOMAction], List[str], Dict[str, Any]]:
+                         page_snapshot: Optional[list] = None,
+                         force_profile_id: Optional[str] = None) -> Tuple[List[DOMAction], List[str], Dict[str, Any]]:
     """Build DOMAction list for the target page.
+
+    force_profile_id: เลือก profile ตรงๆ (ไม่ resolve จาก URL/snapshot) —
+    ใช้กับ /api/v1/fill ที่ผู้ใช้/หน้าเว็บระบุฟอร์มชัดเจนแล้ว.
 
     Returns (mappings, warnings, info) where info carries profile_id,
     form_type, page_match_confidence and editable_fields (for the review card).
     """
-    profile, confidence = resolve_profile(target_url, page_snapshot)
+    if force_profile_id:
+        profile = next((p for p in PROFILES if p.get("profile_id") == force_profile_id), None)
+        confidence = 1.0
+    else:
+        profile, confidence = resolve_profile(target_url, page_snapshot)
     info: Dict[str, Any] = {
         "profile_id": None,
         "profile_name": None,

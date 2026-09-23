@@ -19,6 +19,7 @@ multipart/form-data:
 | `target_url` | string | URL หน้าปัจจุบันของเว็บราชการ (ใช้แมป field_mappings) |
 | `doc_type` | string | (optional) override ชนิดเอกสาร — ข้าม auto-classify |
 | `page_snapshot` | string | (optional) JSON array ของ `[{id, name, type, label}]` — ใช้ resolve ฟอร์มด้วย DOM signature |
+| `outputs` | string | (optional) comma list `excel` \| `pdf` (default `excel`) — **PDF สร้างเฉพาะเมื่อขอ** (เช่น annex_pdf) เพื่อให้ extract เร็ว |
 
 ### Response (200) — `ExtractionResponse`
 
@@ -82,10 +83,13 @@ Quick Form — ไม่ต้องมีเอกสาร:
   "profile_id": "rsc_conference",
   "target_url": "https://...",
   "page_snapshot": [{"id": "..."}],
+  "mode": "full_table",
   "values": { "event_title": "...", "per_diem": 200, "...": "..." }
 }
 ```
 → คืน `ExtractionResponse` (field_mappings พร้อมยิง)
+
+**`mode: "annex_pdf"` + values ว่าง = attach-only** — คืน mappings แค่ radios "แนบไฟล์ PDF" + `file_attach` (สำหรับโหมด "อัปโหลด PDF แนบเอง" — ผู้ใช้เลือกไฟล์ในเครื่อง ไม่ต้องสกัด; ใช้ `profile_id` หรือให้ระบบ resolve จาก `page_snapshot` ก็ได้)
 
 ## `GET /api/v1/templates/{profile_id}`
 

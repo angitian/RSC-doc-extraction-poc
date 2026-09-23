@@ -35,6 +35,13 @@
 - [ ] Rate limit เบาๆ (กัน URL สาธารณะถูกยิง spam)
 - [ ] (ทางเลือก) Shared token — กันคนนอกใช้
 
+### แผน D — On-Premise Server (เครื่องในสำนักงาน)
+**รายละเอียดเต็ม:** [ONPREMISE_SERVER_SPEC.md](./ONPREMISE_SERVER_SPEC.md)
+
+- สเปค: Ryzen 7/i7 (8C) / RAM 32GB / M.2 512 (OS) + SSD 1TB (data)
+- รัน: ระบบสกัด + Portal + **IoT dashboard (500 จุด)** + OCR + DB รวม
+- แนวทาง: Docker Compose + TimescaleDB (sensor) + resource limits (กัน OCR กระทบ) + backup รายวันไป NAS
+
 ## ข้อสรุปเชิงสถาปัตยกรรม (สำคัญ)
 
 1. **Extraction engine (backend/app/extraction, normalizer, generators, profiles) ใช้ซ้ำได้ 100%** — ทั้ง Portal และ Reconciliation ไม่ต้องแก้

@@ -35,25 +35,16 @@
     </div>
   </details>
 
-  <!-- เอกสารที่ใช้สกัด (Auto-fill) -->
+  <!-- ช่องลากวางเดียว รับทุกไฟล์ (ระบบแยกประเภทให้) -->
   <section class="card">
-    <h2>📄 เอกสารที่ใช้สกัด</h2>
+    <h2>� ลากไฟล์ลงช่องเดียว</h2>
     <div id="drop-zone" class="drop-zone" tabindex="0">
       <div class="dz-icon">📂</div>
-      <p><b>ลากไฟล์ .docx / .pdf / .xlsx มาวาง</b><br/>หรือคลิกเพื่อเลือก (สกัดข้อมูล)</p>
+      <p><b>ลากไฟล์มาวาง (หลายไฟล์พร้อมกันได้)</b><br/>
+        <span class="dz-kinds">เอกสาร .docx / .xlsx (สกัด) · PDF ประมาณการ · PDF กำหนดการ</span></p>
     </div>
-    <input id="file-input" type="file" accept=".docx,.pdf,.xlsx" hidden />
+    <input id="file-input" type="file" accept=".docx,.pdf,.xlsx" multiple hidden />
     <div id="docx-file-info" class="hint"></div>
-  </section>
-
-  <!-- PDF เอกสารแนบ (แยกกล่อง ประมาณการ/กำหนดการ) -->
-  <section id="pdf-card" class="card">
-    <h2>📎 PDF เอกสารแนบ (ไม่บังคับ)</h2>
-    <div id="pdf-zone" class="drop-zone" tabindex="0">
-      <div class="dz-icon">📎</div>
-      <p><b>ลาก PDF มาวาง (หลายไฟล์ได้)</b><br/>ระบุว่าเป็น ประมาณการค่าใช้จ่าย หรือ กำหนดการ</p>
-    </div>
-    <input id="pdf-input" type="file" accept=".pdf" multiple hidden />
     <div id="pdf-list" class="pdf-list"></div>
   </section>
 

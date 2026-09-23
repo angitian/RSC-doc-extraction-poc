@@ -14,7 +14,7 @@ multipart/form-data:
 
 | field | ประเภท | ค่า |
 |---|---|---|
-| `file` | File | `.docx` / `.pdf` / `.xlsx` (สูงสุด 20 MB) |
+| `file` | File | `.docx` / `.pdf` / `.xlsx` (สูงสุด 20 MB) — `.xlsx` = เทมเพลตกรอกจาก `/api/v1/templates/{id}` (ใช้เป็นไฟล์สกัด ไม่ใช่ไฟล์แนบ) |
 | `mode` | string | `full_table` (default) \| `annex_pdf` |
 | `target_url` | string | URL หน้าปัจจุบันของเว็บราชการ (ใช้แมป field_mappings) |
 | `doc_type` | string | (optional) override ชนิดเอกสาร — ข้าม auto-classify |

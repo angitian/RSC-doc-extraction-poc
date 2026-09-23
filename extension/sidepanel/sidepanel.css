@@ -108,6 +108,7 @@ input[type="url"], input[type="text"] {
 .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary-2); background: #eff6ff; }
 .drop-zone .dz-icon { font-size: 26px; margin-bottom: 6px; }
 .drop-zone p { color: var(--muted); font-size: 12px; }
+.drop-zone .dz-kinds { display: block; margin-top: 4px; font-size: 11px; color: #94a3b8; }
 
 /* Mode */
 .radio-row {

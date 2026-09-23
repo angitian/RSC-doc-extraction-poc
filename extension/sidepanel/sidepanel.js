@@ -16,8 +16,6 @@ const els = {
   dropZone: $("#drop-zone"),
   fileInput: $("#file-input"),
   docxFileInfo: $("#docx-file-info"),
-  pdfZone: $("#pdf-zone"),
-  pdfInput: $("#pdf-input"),
   pdfList: $("#pdf-list"),
   reviewCard: $("#review-card"),
   rcType: $("#rc-type"),
@@ -144,11 +142,11 @@ els.dropZone.addEventListener("dragleave", () => els.dropZone.classList.remove("
 els.dropZone.addEventListener("drop", (e) => {
   e.preventDefault();
   els.dropZone.classList.remove("dragover");
-  const file = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (file) handleFile(file);
+  handleDrop(e.dataTransfer.files);
 });
 els.fileInput.addEventListener("change", (e) => {
-  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  handleDrop(e.target.files);
+  e.target.value = "";
 });
 
 // ---------------------------------------------------------------------------
@@ -222,40 +220,30 @@ function addPdfFiles(files) {
   if (!added) setStatus("ต้องเป็นไฟล์ .pdf", "err");
 }
 
-els.pdfZone.addEventListener("click", () => els.pdfInput.click());
-els.pdfZone.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    els.pdfInput.click();
-  }
-});
-els.pdfZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  els.pdfZone.classList.add("dragover");
-});
-els.pdfZone.addEventListener("dragleave", () => els.pdfZone.classList.remove("dragover"));
-els.pdfZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  els.pdfZone.classList.remove("dragover");
-  addPdfFiles(e.dataTransfer.files);
-});
-els.pdfInput.addEventListener("change", (e) => {
-  addPdfFiles(e.target.files);
-  e.target.value = "";
-});
-
 // ---------------------------------------------------------------------------
-// เอกสารที่ใช้สกัด — เก็บไว้ก่อน (extract เกิดขึ้นตอนกด "ยิง" ครั้งเดียว พร้อม PDF)
+// ช่องลากเดียว: แยกไฟล์อัตโนมัติ (docx/xlsx = สกัด, pdf = แนบ)
 // ---------------------------------------------------------------------------
-async function handleFile(file) {
-  lastFile = file;
-  const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
-  if (![".docx", ".pdf", ".xlsx"].includes(ext)) {
-    setStatus("ไฟล์ต้องเป็น .docx/.pdf/.xlsx", "err");
-    return;
+async function handleDrop(files) {
+  let docAdded = false;
+  let pdfAdded = 0;
+  Array.from(files || []).forEach((file) => {
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (ext === ".pdf") {
+      addPdfFiles([file]);
+      pdfAdded++;
+    } else if ([".docx", ".xlsx"].includes(ext)) {
+      if (!docAdded) {
+        lastFile = file; // เอาอันแรกเป็นไฟล์สกัด
+        els.docxFileInfo.textContent = `✅ เอกสารสกัด: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+        docAdded = true;
+      }
+    }
+  });
+  if (docAdded || pdfAdded) {
+    setStatus("พร้อมยิง — กด 🚀", "idle");
+  } else {
+    setStatus("ไม่รองรับไฟล์นี้ (docx/xlsx/pdf)", "err");
   }
-  els.docxFileInfo.textContent = `✅ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
-  setStatus("พร้อมยิง — กด 🚀", "idle");
 }
 
 // ---------------------------------------------------------------------------
@@ -268,11 +256,6 @@ function escapeHtml(s) {
 function renderReview(data) {
   els.reviewCard.classList.remove("hidden");
   els.actionHub.classList.remove("hidden");
-
-  // ฟอร์มประชุมไม่มีช่องอัปโหลด PDF → ซ่อนกล่องแนบ PDF
-  const isConference = data.profile_id === "rsc_conference";
-  els.pdfCard = els.pdfCard || $("#pdf-card");
-  if (els.pdfCard) els.pdfCard.style.display = isConference ? "none" : "";
 
   const s = data.summary || {};
   const info = [
@@ -409,11 +392,16 @@ els.btnFill.addEventListener("click", async () => {
     currentResponse = data;
     userEdits = {};
     renderReview(data);
+
+    const hasAttachAction = data.field_mappings.some((m) => m.action === "file_attach");
+    if (pdfFiles.length && !hasAttachAction) {
+      log("⚠️ ฟอร์มนี้ไม่มีช่องอัปโหลด PDF — ข้ามการแนบ (ไฟล์ PDF ถูกเพิกเฉย)", "err");
+    }
     log(`ฟอร์ม: ${data.profile_name || data.form_type || "?"} — mappings ${data.field_mappings.length}${attach.length ? ` | แนบ PDF: ${attach.join(", ")}` : ""}`);
 
     // ใส่ PDF ของผู้ใช้เข้า file_attach (ถ้ามี) + override ที่แก้ใน review card
     let mappings = applyOverrides(data.field_mappings);
-    if (pdfFiles.length) {
+    if (pdfFiles.length && hasAttachAction) {
       mappings = mappings.map((m) =>
         m.action === "file_attach"
           ? { ...m, meta: { ...m.meta, files: pdfFiles } }

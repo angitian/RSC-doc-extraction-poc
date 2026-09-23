@@ -42,7 +42,9 @@ git push space main
 1. เปิด `chrome://extensions` → เปิด **Developer mode**
 2. **Load unpacked** → เลือกโฟลเดอร์ `extension/`
 3. คลิกไอคอนบน toolbar → เปิด Side Panel
-4. เปิดการตั้งค่า (⚙️) → ใส่ API URL เช่น `https://<name>.onrender.com` → บันทึก
+4. **ค่า default ชี้ที่ Render แล้ว** (`https://rsc-extraction-api.onrender.com`) — ใช้ได้ทันที
+   ถ้าต้องการ local/ที่อื่น → เปิดการตั้งค่า (⚙️) → เปลี่ยน API URL → บันทึก
+   (หมายเหตุ: ถ้าเคยบันทึก URL เก่าไว้ (เช่น localhost) ต้องกดบันทึกใหม่เพื่อใช้ค่า default)
 
 > ถ้าเปิดหน้าเว็บราชการจากไฟล์ในเครื่อง (`file://...`) ให้ไปที่
 > `chrome://extensions` → การ์ด extension → รายละเอียด → เปิด **"อนุญาตให้เข้าถึงไฟล์ URL"**

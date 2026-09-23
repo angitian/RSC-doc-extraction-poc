@@ -4,7 +4,9 @@
 // ============================================================================
 "use strict";
 
-const DEFAULT_API = "http://127.0.0.1:8000";
+// ค่า default ชี้ไปที่ backend ที่ deploy บน Render (ฟรี tier)
+// ทดสอบ local ให้เปลี่ยนใน ⚙️ Settings เป็น http://127.0.0.1:8000
+const DEFAULT_API = "https://rsc-extraction-api.onrender.com";
 const REQUEST_TIMEOUT_MS = 95_000; // cold start on free hosts can take ~60s
 
 const $ = (sel) => document.querySelector(sel);

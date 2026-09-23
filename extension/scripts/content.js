@@ -250,23 +250,50 @@
     return null;
   }
 
-  // Find a file input scoped to a section (inside the container of its radio).
-  // Some portal builds render per-section upload inputs when "แนบไฟล์ PDF" is
-  // selected; others share one "เอกสารเพิ่มเติม" input.
+  // Find a file input scoped to a section by DOM order: the per-section upload
+  // input appears right after its radio group (it may be OUTSIDE the <fieldset>
+  // — a sibling — so ancestor walking is unreliable). Layouts:
+  //   [expense radios] [expense file input] [schedule radios] [schedule file input] [shared input]
+  //   or a single shared "เอกสารเพิ่มเติม" input (fallback).
+  function locateScopedFileInput(scopeName) {
+    const ordered = Array.from(
+      document.querySelectorAll('input[type="radio"][name$="-document-source"], input[type="file"]')
+    ).sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+
+    const files = ordered.filter((el) => el.type === "file");
+    if (!files.length) return { found: null, fallback: null };
+
+    const groupIdx = [];
+    ordered.forEach((el, i) => {
+      if (el.type === "radio" && el.name === scopeName) groupIdx.push(i);
+    });
+    if (!groupIdx.length) return { found: null, fallback: files[0] };
+
+    const groupEnd = Math.max(...groupIdx);
+    let nextGroupStart = ordered.length;
+    for (let i = groupEnd + 1; i < ordered.length; i++) {
+      if (ordered[i].type === "radio" && ordered[i].name !== scopeName) {
+        nextGroupStart = i;
+        break;
+      }
+    }
+    for (let i = groupEnd + 1; i < nextGroupStart; i++) {
+      if (ordered[i].type === "file") return { found: ordered[i], fallback: files[0] };
+    }
+    return { found: null, fallback: files[0] };
+  }
+
   async function resolveScopedFileInput(scopeName) {
     if (!scopeName) return null;
-    let radio = null;
-    try {
-      radio = document.querySelector(`input[type="radio"][name="${CSS.escape(scopeName)}"]`);
-    } catch (_) {}
-    if (!radio) return null;
-    const container =
-      radio.closest("fieldset, section, form") ||
-      (radio.parentElement && radio.parentElement.parentElement) ||
-      null;
-    if (!container) return null;
-    const input = container.querySelector('input[type="file"]');
-    return input && input.type === "file" ? input : null;
+    let r = locateScopedFileInput(scopeName);
+    if (r.found) return r.found;
+    // รอให้ React render input ของ section (สูงสุด ~1.5s) แล้วค่อย fallback
+    for (let i = 0; i < 6; i++) {
+      await sleep(250);
+      r = locateScopedFileInput(scopeName);
+      if (r.found) return r.found;
+    }
+    return r.fallback;
   }
 
   async function fileAttach(selector, index, base64Data, filename, mime, label, files, scopeName) {

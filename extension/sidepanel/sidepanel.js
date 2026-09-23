@@ -29,11 +29,16 @@ const els = {
   btnCapture: $("#btn-capture"),
   quickForm: $("#quick-form"),
   qfProfile: $("#qf-profile"),
+  qfError: $("#qf-error"),
+  btnRefreshForms: $("#btn-refresh-forms"),
   btnLoadTemplate: $("#btn-load-template"),
   qfFields: $("#qf-fields"),
   btnQuickFill: $("#btn-quick-fill"),
+  versionBadge: $("#version-badge"),
   log: $("#log"),
 };
+
+let formsCache = []; // loaded form profiles (Quick Form)
 
 let currentResponse = null; // last ExtractionResponse
 let currentTargetUrl = "";
@@ -68,6 +73,8 @@ async function saveApiUrl() {
   await chrome.storage.sync.set({ apiUrl: url });
   els.apiSaved.textContent = "บันทึกแล้ว ✓";
   setTimeout(() => (els.apiSaved.textContent = ""), 2000);
+  loadForms(); // re-fetch with the new URL (no extension reload needed)
+  updateVersionBadge();
 }
 
 function getApiUrl() {
@@ -399,16 +406,45 @@ els.btnCapture.addEventListener("click", async () => {
 async function loadForms() {
   try {
     const res = await fetch(`${getApiUrl()}/api/v1/forms`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    els.qfProfile.innerHTML = data.forms
+    formsCache = data.forms || [];
+    els.qfProfile.innerHTML = formsCache
       .map((f) => `<option value="${escapeHtml(f.profile_id)}">${escapeHtml(f.name)}</option>`)
       .join("");
-    renderQuickFields(data.forms[0]);
-    return data.forms;
+    els.qfError.classList.add("hidden");
+    renderQuickFields(formsCache[0]);
+    return formsCache;
   } catch (err) {
+    formsCache = [];
+    els.qfProfile.innerHTML = "";
+    els.qfError.classList.remove("hidden");
+    els.qfError.textContent = `⚠️ เชื่อมต่อ API ไม่ได้ (${getApiUrl()}) — ตรวจสอบการตั้งค่า URL หรือเริ่มเซิร์ฟเวอร์ backend`;
     log("❌ โหลดฟอร์มไม่สำเร็จ: " + err.message, "err");
     return [];
   }
+}
+
+els.btnRefreshForms.addEventListener("click", () => {
+  loadForms();
+  setStatus("รีเฟรชฟอร์มแล้ว", "idle");
+});
+
+// Version badge — extension build + backend API version (ยืนยัน build ที่ใช้)
+async function updateVersionBadge() {
+  const extVer = chrome.runtime.getManifest().version;
+  let apiVer = "?";
+  let offline = true;
+  try {
+    const res = await fetch(`${getApiUrl()}/api/v1/health`);
+    if (res.ok) {
+      const h = await res.json();
+      apiVer = h.version || "?";
+      offline = false;
+    }
+  } catch (_) {}
+  els.versionBadge.textContent = `ext v${extVer} · API v${apiVer}`;
+  els.versionBadge.classList.toggle("offline", offline);
 }
 
 function renderQuickFields(form) {
@@ -434,13 +470,21 @@ els.qfProfile.addEventListener("change", async () => {
 
 els.btnLoadTemplate.addEventListener("click", async () => {
   const profileId = els.qfProfile.value;
+  if (!profileId) {
+    els.qfError.classList.remove("hidden");
+    els.qfError.textContent = "⚠️ ยังไม่มีฟอร์มให้เลือก — เชื่อมต่อ API ให้ได้ก่อน (ตรวจ URL ใน ⚙️ ตั้งค่า)";
+    return;
+  }
   try {
     const res = await fetch(`${getApiUrl()}/api/v1/templates/${profileId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     downloadBase64(data.base64, data.filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     log("📥 ดาวน์โหลด Excel template แล้ว", "ok");
   } catch (err) {
     log("❌ ดาวน์โหลด template ไม่สำเร็จ: " + err.message, "err");
+    els.qfError.classList.remove("hidden");
+    els.qfError.textContent = `⚠️ ดาวน์โหลด template ไม่ได้ (${getApiUrl()}) — ตรวจสอบเซิร์ฟเวอร์`;
   }
 });
 
@@ -497,6 +541,7 @@ chrome.runtime.onMessage.addListener((msg) => {
 loadApiUrl();
 els.saveApi.addEventListener("click", saveApiUrl);
 loadForms();
+updateVersionBadge();
 // Quick Form starts collapsed to keep the panel tidy (ย่อไว้ก่อน)
 els.quickForm.removeAttribute("open");
 setStatus("พร้อมใช้งาน", "idle");

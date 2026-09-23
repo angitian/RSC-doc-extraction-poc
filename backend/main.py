@@ -40,7 +40,7 @@ from app.normalizer.thai_utils import num_to_thai_baht
 
 app = FastAPI(
     title="RSC Administrative Productivity Suite API",
-    version="2.0.0",
+    version="2.1.0",
     description="Extract structured data from Thai government memos (.docx/.pdf) "
                 "and produce dynamic DOM fill instructions, Excel and PDF annex.",
 )
@@ -89,7 +89,7 @@ def _build_summary(extracted: Dict[str, Any], rollup: Dict[str, Any],
 # ---------------------------------------------------------------------------
 @app.get("/api/v1/health")
 def health():
-    return {"status": "ok", "service": "rsc-extraction-api", "version": "2.0.0"}
+    return {"status": "ok", "service": "rsc-extraction-api", "version": "2.1.0"}
 
 
 def _parse_snapshot(raw_snapshot: str) -> Optional[List[Dict[str, Any]]]:

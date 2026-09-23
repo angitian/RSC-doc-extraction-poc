@@ -15,7 +15,10 @@
         <p class="sub">สกัดเอกสารราชการ → กรอกแบบฟอร์มเว็บ</p>
       </div>
     </div>
-    <span id="status-pill" class="pill pill-idle">พร้อมใช้งาน</span>
+    <div class="header-right">
+      <span id="version-badge" class="pill pill-idle" title="เวอร์ชัน extension / API">…</span>
+      <span id="status-pill" class="pill pill-idle">พร้อมใช้งาน</span>
+    </div>
   </header>
 
   <!-- Settings -->
@@ -57,7 +60,11 @@
     <summary>⚡ กรอกด่วน (Quick Form) — ไม่ต้องใช้เอกสาร</summary>
     <div class="qf-body">
       <label for="qf-profile">เลือกฟอร์มปลายทาง</label>
-      <select id="qf-profile"></select>
+      <div class="row">
+        <select id="qf-profile"></select>
+        <button id="btn-refresh-forms" class="btn btn-ghost btn-sm" type="button" title="โหลดรายการฟอร์มใหม่">🔄</button>
+      </div>
+      <div id="qf-error" class="qf-error hidden"></div>
       <button id="btn-load-template" class="btn btn-ghost" type="button">📥 ดาวน์โหลด Excel template</button>
       <div id="qf-fields"></div>
       <button id="btn-quick-fill" class="btn btn-primary" type="button">🚀 กรอกลงแบบฟอร์ม (Quick)</button>

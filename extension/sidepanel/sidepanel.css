@@ -36,6 +36,9 @@ body {
   padding: 10px 12px;
   margin-bottom: 10px;
 }
+.header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+#version-badge { background: #334155; color: #cbd5e1; font-size: 9px; }
+#version-badge.offline { background: var(--red); color: #fff; }
 .brand { display: flex; gap: 8px; align-items: center; }
 .logo { font-size: 22px; }
 h1 { font-size: 14px; font-weight: 700; }
@@ -162,6 +165,16 @@ input[type="url"], input[type="text"] {
   font-size: 12px;
   background: #fff;
 }
+.qf-error {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+.btn-sm { width: auto; padding: 6px 9px; margin-bottom: 0; font-size: 12px; }
 .qf-field { margin-bottom: 7px; }
 .qf-field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
 .qf-field input, .qf-field textarea {

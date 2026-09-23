@@ -49,6 +49,21 @@ git push space main
 > ถ้าเปิดหน้าเว็บราชการจากไฟล์ในเครื่อง (`file://...`) ให้ไปที่
 > `chrome://extensions` → การ์ด extension → รายละเอียด → เปิด **"อนุญาตให้เข้าถึงไฟล์ URL"**
 
+## 5. Chrome Web Store
+
+**นโยบายความเป็นส่วนตัว:** [PRIVACY.md](./PRIVACY.md) (โฮสต์ผ่าน GitHub Pages หรือ Google Sites)
+
+1. สมัคร [Chrome Web Store Developer account](https://chrome.google.com/webstore/devconsole) ($5 ครั้งเดียว)
+2. สร้าง zip จาก**เนื้อหาด้านใน** `extension/` (manifest.json ต้องอยู่ root ของ zip)
+   ```bash
+   cd extension && zip -r ../rsc-extension-store.zip . -x "*.DS_Store" "assets/icons/generate_icons.py" "assets/icons/source_logo.jpg"
+   ```
+3. อัปโหลด zip → กรอก listing + Privacy Policy URL + ตอบแบบฟอร์ม Data Safety
+4. ตั้ง visibility เป็น **Unlisted** (เฉพาะคนมีลิงก์) สำหรับการแจกภายในหน่วยงาน
+
+**หมายเหตุสิทธิ์ (host_permissions):** จำกัดเฉพาะ `rsc-approval.kmutt.ac.th`, Render API และ
+localhost (dev) — ถ้าใช้งานกับเว็บราชการ domain อื่น ต้องเพิ่ม domain นั้นใน `manifest.json`
+
 ## 5. Demo
 
 1. เปิด `RSC Smart Approval - ระบบบริหารจัดการโครงการ.html` ในแท็บ

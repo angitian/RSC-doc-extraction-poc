@@ -10,7 +10,9 @@
     "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://rsc-approval.kmutt.ac.th/*",
+    "https://rsc-extraction-api.onrender.com/*",
+    "http://127.0.0.1:8000/*"
   ],
   "background": {
     "service_worker": "background.js"

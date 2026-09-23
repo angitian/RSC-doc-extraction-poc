@@ -182,12 +182,17 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
         if schedule:
             actions.append(_act("#generated-schedule-notes", "set_value", "หมายเหตุ: กำหนดการอาจปรับตามความเหมาะสม"))
 
-    # มี PDF ที่จะแนบอย่างน้อย 1 ชิ้น -> file_attach หนึ่งครั้ง (ช่อง multiple)
-    if attach:
-        actions.append(_act('input[type="file"]', "file_attach", label="เอกสารเพิ่มเติม", meta={
-            "mime": "application/pdf",
-            "note": "meta.files = [{base64, filename, mime}] จะถูกเติมโดย sidepanel ก่อนส่งให้ content script",
-        }))
+    # มี PDF ที่จะแนบ -> file_attach แยก per-section (scope_name ชี้ radio ของ section)
+    # content script หา file input ใน container ของ radio นั้นก่อน; ถ้าไม่มี
+    # (ฟอร์มมีช่องกลางเดียว) จะ fallback ไป input[type="file"] ตัวแรก + รวมไฟล์สะสม
+    for sec, radio_name in (("expense", "expense-document-source"),
+                            ("schedule", "schedule-document-source")):
+        if sec in attach:
+            actions.append(_act("", "file_attach", label="เอกสารเพิ่มเติม", meta={
+                "scope_name": radio_name,
+                "mime": "application/pdf",
+                "note": "sidepanel เติม meta.files = PDF ของ section นี้",
+            }))
 
     return actions
 

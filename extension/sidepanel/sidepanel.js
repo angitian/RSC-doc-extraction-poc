@@ -155,9 +155,13 @@ els.fileInput.addEventListener("change", (e) => {
 // PDF แนบ (แยกกล่อง ประมาณการ/กำหนดการ + dropdown + auto-assign)
 // ---------------------------------------------------------------------------
 function assignRemainingTypes() {
-  // ถ้าไฟล์หนึ่งถูกตั้งเป็น type ใด ไฟล์อื่นที่ยังไม่มี type จะได้ type ที่เหลือ
   const used = new Set(pdfItems.map((p) => p.type).filter(Boolean));
-  if (used.size === 1 && pdfItems.length === 2) {
+  if (pdfItems.length === 2 && used.size === 0) {
+    // ลาก 2 ไฟล์พร้อมกัน: อันแรก = ประมาณการ, อันสอง = กำหนดการ (สลับได้ใน dropdown)
+    pdfItems[0].type = "expense";
+    pdfItems[1].type = "schedule";
+  } else if (pdfItems.length === 2 && used.size === 1) {
+    // ถ้าไฟล์หนึ่งถูกตั้งเป็น type ใด ไฟล์อื่นที่ยังไม่มี type จะได้ type ที่เหลือ
     const free = used.has("expense") ? "schedule" : "expense";
     pdfItems.forEach((p) => {
       if (!p.type) p.type = free;
@@ -490,14 +494,19 @@ els.btnFill.addEventListener("click", async () => {
       log("⚠️ ฟอร์มนี้ไม่มีช่องอัปโหลด PDF — ข้ามการแนบ (ไฟล์ PDF ถูกเพิกเฉย)", "err");
     }
 
-    // ใส่ PDF ของผู้ใช้เข้า file_attach (ถ้ามี) + override ที่แก้ใน review card
+    // ใส่ PDF ของผู้ใช้เข้า file_attach (แยกตาม scope ของแต่ละ section) + override
+    const expenseFiles = pdfItems.filter((p) => p.type === "expense").map((p) => ({ base64: p.base64, filename: p.name, mime: "application/pdf" }));
+    const scheduleFiles = pdfItems.filter((p) => p.type === "schedule").map((p) => ({ base64: p.base64, filename: p.name, mime: "application/pdf" }));
     let mappings = applyOverrides(data.field_mappings);
     if (pdfFiles.length && hasAttachAction) {
-      mappings = mappings.map((m) =>
-        m.action === "file_attach"
-          ? { ...m, meta: { ...m.meta, files: pdfFiles } }
-          : m
-      );
+      mappings = mappings.map((m) => {
+        if (m.action !== "file_attach") return m;
+        const scope = m.meta && m.meta.scope_name;
+        let filesForScope = pdfFiles; // fallback: ใส่ทั้งหมด (ฟอร์มช่องเดียว)
+        if (scope === "expense-document-source" && expenseFiles.length) filesForScope = expenseFiles;
+        else if (scope === "schedule-document-source" && scheduleFiles.length) filesForScope = scheduleFiles;
+        return { ...m, meta: { ...m.meta, files: filesForScope } };
+      });
     }
 
     setStatus("กำลังยิงข้อมูลลงฟอร์ม...", "busy");

@@ -250,13 +250,36 @@
     return null;
   }
 
-  async function fileAttach(selector, index, base64Data, filename, mime, label, files) {
-    const el = await resolveFileInput(selector, index, label);
+  // Find a file input scoped to a section (inside the container of its radio).
+  // Some portal builds render per-section upload inputs when "แนบไฟล์ PDF" is
+  // selected; others share one "เอกสารเพิ่มเติม" input.
+  async function resolveScopedFileInput(scopeName) {
+    if (!scopeName) return null;
+    let radio = null;
+    try {
+      radio = document.querySelector(`input[type="radio"][name="${CSS.escape(scopeName)}"]`);
+    } catch (_) {}
+    if (!radio) return null;
+    const container =
+      radio.closest("fieldset, section, form") ||
+      (radio.parentElement && radio.parentElement.parentElement) ||
+      null;
+    if (!container) return null;
+    const input = container.querySelector('input[type="file"]');
+    return input && input.type === "file" ? input : null;
+  }
+
+  async function fileAttach(selector, index, base64Data, filename, mime, label, files, scopeName) {
+    // 1) per-section input (ใน container ของ radio) ก่อน; 2) fallback ช่องกลาง/ตัวแรก
+    let el = scopeName ? await resolveScopedFileInput(scopeName) : null;
+    if (!el) el = await resolveFileInput(selector, index, label);
     if (!el) return { ok: false, reason: "ไม่พบ <input type=file> (ลองแล้วทั้ง input[type=file] และ input[accept*=pdf])" };
 
     el.scrollIntoView({ block: "center", behavior: "instant" });
 
     const dt = new DataTransfer();
+    // Accumulate: เก็บไฟล์ที่แนบไปแล้ว (กัน action ถัดไปเขียนทับเมื่อช่องกลางเดียว)
+    Array.from(el.files || []).forEach((f) => dt.items.add(f));
     const add = (b64, name, mimeType) => {
       if (!b64) return;
       const binary = atob(b64);
@@ -283,7 +306,7 @@
     if (!el.files || el.files.length === 0) {
       return { ok: false, reason: "ตั้งค่าไฟล์ไม่สำเร็จ (files ว่างหลัง dispatch change)" };
     }
-    return { ok: true, count: dt.items.length };
+    return { ok: true, count: dt.items.length, scoped: Boolean(scopeName) };
   }
 
   // --------------------------------------------------------------------------
@@ -324,7 +347,7 @@
         }
 
         if (act === "file_attach") {
-          const res = await fileAttach(selector, index, value, meta.filename, meta.mime, label, meta.files);
+          const res = await fileAttach(selector, index, value, meta.filename, meta.mime, label, meta.files, meta.scope_name);
           if (res.ok) filled++;
           else {
             errors.push(res.reason);

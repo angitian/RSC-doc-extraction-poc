@@ -12,7 +12,9 @@
   "host_permissions": [
     "https://rsc-approval.kmutt.ac.th/*",
     "https://rsc-extraction-api.onrender.com/*",
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "http://127.0.0.1:7860/*",
+    "http://localhost:7860/*"
   ],
   "background": {
     "service_worker": "background.js"

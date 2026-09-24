@@ -588,15 +588,22 @@ els.btnTsv.addEventListener("click", async () => {
   }
 });
 
-// จับฟอร์ม (debug)
+// จับฟอร์ม (debug) — คัดลอก JSON เต็มเพื่อส่งให้ dev ปรับ mapping ให้ตรง DOM จริง
 els.btnCapture.addEventListener("click", async () => {
   const tab = await getActiveTab();
   if (!tab.id) return;
   const res = await chrome.runtime.sendMessage({ action: "CAPTURE_FORM", tabId: tab.id });
   if (res && res.ok && res.result) {
     const controls = res.result.controls || [];
-    log(`🔍 จับฟอร์มได้ ${controls.length} ฟิลด์ — ดู JSON ใน log นี้`, "info");
-    log(JSON.stringify(controls, null, 1).slice(0, 600), "info");
+    const json = JSON.stringify(controls, null, 1);
+    log(`🔍 จับฟอร์มได้ ${controls.length} ฟิลด์`, "info");
+    try {
+      await navigator.clipboard.writeText(json);
+      log("📋 คัดลอก JSON ครบแล้ว (วางส่งให้ dev ได้เลย)", "ok");
+      log(json.slice(0, 300), "info");
+    } catch (_) {
+      log(json.slice(0, 900), "info");
+    }
   } else {
     log("❌ จับฟอร์มไม่สำเร็จ: " + (res && res.error ? res.error : ""), "err");
   }

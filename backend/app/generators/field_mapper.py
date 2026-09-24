@@ -58,10 +58,11 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
 
     # ---- Section 1-4: ข้อมูล + เนื้อหา (ข้ามใน attach-only) ----
     if not attach_only:
-        # ACC select: match option containing budget year suffix, e.g. "RSC-68_..._สกสว"
-        yr = _budget_year(extracted)
-        if yr:
-            actions.append(_act("#acc-field", "set_select", yr, delay_ms=200, label="รหัสงบประมาณ (ACC)"))
+        # ACC select: ลอง match acc_code (เช่น "7608.8.1") ก่อน แล้วค่อย fallback
+        # เป็นปีงบประมาณ 2 หลัก (e.g. "RSC-68_..._สกสว" มี "68" อยู่ใน option)
+        acc_val = str(extracted.get("acc_code") or "").strip() or _budget_year(extracted)
+        if acc_val:
+            actions.append(_act("#acc-field", "set_select", acc_val, delay_ms=200, label="รหัสงบประมาณ (ACC)"))
         actions.append(_act("#project-document-number", "set_value", extracted.get("doc_number_tail", ""),
                              label="เลขที่หนังสือ", key="doc_number_tail"))
         actions.append(_act("#project-document-date", "set_value", extracted.get("doc_date_iso", ""),
@@ -103,14 +104,16 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
             actions.append(_act("#project-location-0-province", "set_value", extracted.get("province_name", ""),
                                  label="จังหวัด", key="province_name"))
         if extracted.get("target_group_name"):
-            actions.append(_act("#target-group-name-project-target-group-2", "set_value",
-                                 extracted.get("target_group_name", ""), label="ชื่อกลุ่มเป้าหมาย", key="target_group_name"))
+            # ID ของกลุ่มเป้าหมายเปลี่ยนตามจำนวนกลุ่ม (เช่น ...-2 / ...-4) —
+            # ใช้ label เป็นตัวชี้ (label[for] เสถียรกว่า ID ที่สร้างจาก index)
+            actions.append(_act("", "set_value", extracted.get("target_group_name", ""),
+                                 label="ชื่อกลุ่มเป้าหมาย", key="target_group_name"))
         if extracted.get("target_group_quantity"):
-            actions.append(_act("#target-group-quantity-project-target-group-2", "set_value",
-                                 extracted.get("target_group_quantity", ""), label="จำนวน", key="target_group_quantity"))
+            actions.append(_act("", "set_value", extracted.get("target_group_quantity", ""),
+                                 label="จำนวน", key="target_group_quantity"))
         if extracted.get("target_group_unit"):
-            actions.append(_act("#target-group-unit-project-target-group-2", "set_value",
-                                 extracted.get("target_group_unit", ""), label="หน่วย", key="target_group_unit"))
+            actions.append(_act("", "set_value", extracted.get("target_group_unit", ""),
+                                 label="หน่วย", key="target_group_unit"))
         if extracted.get("action_details"):
             actions.append(_act("#project-additional-details", "set_value", extracted.get("action_details", ""),
                                  label="ข้อความชี้แจงเพิ่มเติมหลังกลุ่มเป้าหมาย", key="action_details"))
@@ -127,8 +130,11 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
         actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
                              meta={"scope_name": "expense-document-source"}))
     else:
-        actions.append(_act("", "click", delay_ms=250, label="สร้างในระบบ",
+        actions.append(_act("", "click", delay_ms=300, label="สร้างในระบบ",
                              meta={"scope_name": "expense-document-source"}))
+        # รอให้ตาราง mount + React settle ก่อนกรอก (แถวแรกที่ app สร้างเอง
+        # เสี่ยงโดน re-render ล้างค่า)
+        actions.append(_act("", "wait", delay_ms=600))
         # ข้อมูลหัวเอกสารแนบ (เฉพาะตอนกรอกตารางในระบบ)
         if extracted.get("project_title"):
             actions.append(_act("#generated-expense-project-name", "set_value", extracted.get("project_title", ""),
@@ -139,19 +145,34 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
         # ตารางค่าใช้จ่าย (เริ่มต้นมี 1 แถว -> คลิกเพิ่มถ้าจำเป็น)
         # หมายเหตุ: expense-*/schedule-* เป็น ID ที่ app ตั้งชื่อเอง (เสถียร) —
         # ไม่ต้องใช้ label (label fallback จะชี้ผิดแถวถ้า selector พัง)
+        # stable_ms เฉพาะแถวแรก (i==0) — แถวที่ app สร้างเองต้องรอ React settle
         for i, row in enumerate(breakdown):
             if i > 0:
                 # selector ว่าง = ค้นปุ่มทั้งหน้าจากข้อความ (อย่าใช้ "button" —
                 # content script จะเข้าใจผิดว่าเป็น container)
-                actions.append(_act("", "click_button", "เพิ่มรายการ", delay_ms=350))
-            actions.append(_act(f"#expense-row-type-{i}", "set_select", "item"))
-            actions.append(_act(f"#expense-number-{i}", "set_value", str(i + 1)))
-            actions.append(_act(f"#expense-description-{i}", "set_value", row.get("รายการ", "")))
-            actions.append(_act(f"#expense-calculation-{i}", "set_value", row.get("รายละเอียด", "")))
+                # retry: คลิกแล้ว React ยังไม่ render แถว -> คลิกซ้ำ (v1 parity)
+                actions.append(_act("", "click_button", "เพิ่มรายการ", delay_ms=350,
+                                    meta={"retry": True, "verify_selector": f"#expense-row-type-{i}"}))
+            stable = {"stable_ms": 400} if i == 0 else {}
+            actions.append(_act(f"#expense-row-type-{i}", "set_select", "item", meta=stable))
+            actions.append(_act(f"#expense-number-{i}", "set_value", str(i + 1), meta=stable))
+            actions.append(_act(f"#expense-description-{i}", "set_value", row.get("รายการ", ""), meta=stable))
+            actions.append(_act(f"#expense-calculation-{i}", "set_value", row.get("รายละเอียด", ""), meta=stable))
             amt = str(row.get("จำนวนเงิน (บาท)", "")).replace(",", "")
             if amt:
-                actions.append(_act(f"#expense-loan-{i}", "set_value", amt))
+                actions.append(_act(f"#expense-loan-{i}", "set_value", amt, meta=stable))
         if breakdown:
+            actions.append(_act("#generated-expense-notes", "set_value", "ขอถัวเฉลี่ยทุกรายการ", label="หมายเหตุ"))
+            # RE-FILL แถวแรก — React re-render หลังสลับโหมดอาจล้างค่าของแถวที่
+            # app สร้างเอง (หลักฐานจาก live capture: row 0 ว่าง, rows 1-3 ตรง)
+            row0 = breakdown[0]
+            actions.append(_act("#expense-row-type-0", "set_select", "item"))
+            actions.append(_act("#expense-number-0", "set_value", "1"))
+            actions.append(_act("#expense-description-0", "set_value", row0.get("รายการ", "")))
+            actions.append(_act("#expense-calculation-0", "set_value", row0.get("รายละเอียด", "")))
+            amt0 = str(row0.get("จำนวนเงิน (บาท)", "")).replace(",", "")
+            if amt0:
+                actions.append(_act("#expense-loan-0", "set_value", amt0))
             actions.append(_act("#generated-expense-notes", "set_value", "ขอถัวเฉลี่ยทุกรายการ", label="หมายเหตุ"))
 
     # schedule: มี PDF -> upload; ไม่มี -> "สร้างในระบบ" + กรอกตาราง
@@ -159,8 +180,9 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
         actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
                              meta={"scope_name": "schedule-document-source"}))
     else:
-        actions.append(_act("", "click", delay_ms=250, label="สร้างในระบบ",
+        actions.append(_act("", "click", delay_ms=300, label="สร้างในระบบ",
                              meta={"scope_name": "schedule-document-source"}))
+        actions.append(_act("", "wait", delay_ms=600))
         # ตารางกำหนดการ (เริ่มต้นมี 1 วัน/1 กิจกรรม -> คลิกเพิ่มถ้าจำเป็น)
         if extracted.get("project_title"):
             actions.append(_act("#generated-schedule-title", "set_value",
@@ -170,18 +192,42 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
                                  extracted.get("schedule_text", ""), label="รายละเอียดใต้ชื่อเรื่อง"))
         for di, day in enumerate(schedule):
             if di > 0:
-                actions.append(_act("", "click_button", "เพิ่มวันหรือช่วงกิจกรรม", delay_ms=350))
-            actions.append(_act(f"#schedule-date-{di}", "set_value", day.get("date_title", "")))
+                actions.append(_act("", "click_button", "เพิ่มวันหรือช่วงกิจกรรม", delay_ms=350,
+                                    meta={"retry": True, "verify_selector": f"#schedule-date-{di}"}))
+            stable = {"stable_ms": 400} if di == 0 else {}
+            actions.append(_act(f"#schedule-date-{di}", "set_value", day.get("date_title", ""), meta=stable))
             if day.get("location"):
-                actions.append(_act(f"#schedule-location-{di}", "set_value", day.get("location", "")))
+                actions.append(_act(f"#schedule-location-{di}", "set_value", day.get("location", ""), meta=stable))
             for ai, act in enumerate(day.get("items") or []):
                 if ai > 0:
                     # เพิ่มกิจกรรมภายในวันปัจจุบัน: scope ในการ์ดของวันนี้
+                    # meta.texts = ปุ่ม label เปลี่ยนตาม build ("เพิ่มกิจกรรม" เป็นหลัก)
                     actions.append(_act(
-                        f"article:has(#schedule-date-{di})", "click_button", "เพิ่มกิจกรรมในช่วงนี้", delay_ms=300))
-                actions.append(_act(f"#schedule-time-{di}-{ai}", "set_value", act.get("time", "")))
-                actions.append(_act(f"#schedule-activity-{di}-{ai}", "set_value", act.get("activity", "")))
+                        f"article:has(#schedule-date-{di})", "click_button", "เพิ่มกิจกรรม",
+                        delay_ms=300,
+                        meta={"texts": ["เพิ่มกิจกรรม", "เพิ่มกิจกรรมในช่วงนี้"],
+                              "retry": True, "verify_selector": f"#schedule-time-{di}-{ai}"}))
+                actions.append(_act(f"#schedule-time-{di}-{ai}", "set_value", act.get("time", ""), meta=stable))
+                actions.append(_act(f"#schedule-activity-{di}-{ai}", "set_value", act.get("activity", ""), meta=stable))
         if schedule:
+            actions.append(_act("#generated-schedule-notes", "set_value", "หมายเหตุ: กำหนดการอาจปรับตามความเหมาะสม"))
+            # SWEEP ทั้งตาราง (ตอน DOM settle แล้ว) — self-heal:
+            #   - กิจกรรมที่คลิกเพิ่มพลาดตอนตารางเพิ่ง render (เช่น วันที่ 3 สิงหาคม
+            #     ได้แค่ 1 จาก 5) -> ensure_click จะเพิ่มแถวที่ขาด แล้วกรอกค่า
+            #   - กิจกรรมที่มีอยู่แล้ว -> ensure_click skip เร็ว (ไม่เพิ่มซ้ำ) + re-fill ค่า
+            for di, day in enumerate(schedule):
+                actions.append(_act(f"#schedule-date-{di}", "set_value", day.get("date_title", "")))
+                if day.get("location"):
+                    actions.append(_act(f"#schedule-location-{di}", "set_value", day.get("location", "")))
+                for ai, act in enumerate(day.get("items") or []):
+                    if ai > 0:
+                        actions.append(_act(
+                            f"article:has(#schedule-date-{di})", "ensure_click", "เพิ่มกิจกรรม",
+                            delay_ms=300,
+                            meta={"texts": ["เพิ่มกิจกรรม", "เพิ่มกิจกรรมในช่วงนี้"],
+                                  "verify_selector": f"#schedule-time-{di}-{ai}"}))
+                    actions.append(_act(f"#schedule-time-{di}-{ai}", "set_value", act.get("time", "")))
+                    actions.append(_act(f"#schedule-activity-{di}-{ai}", "set_value", act.get("activity", "")))
             actions.append(_act("#generated-schedule-notes", "set_value", "หมายเหตุ: กำหนดการอาจปรับตามความเหมาะสม"))
 
     # มี PDF ที่จะแนบ -> file_attach แยก per-section (scope_name ชี้ radio ของ section)

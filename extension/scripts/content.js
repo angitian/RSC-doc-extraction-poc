@@ -71,8 +71,20 @@
   // first match is often the wrong field — when a label hint exists, prefer it.
   const BARE_TAG_RE = /^(input|textarea|select|button|a|label)$/i;
 
-  function waitForElement(selector, index, timeoutMs = 6000, label, scopeName) {
+  function waitForElement(selector, index, timeoutMs = 6000, label, scopeName, opts = {}) {
+    // opts: { stableMs, candidates } — candidates = fallback selector list
+    // (React auto-IDs drift between portal builds); stableMs waits for the
+    // element to survive a React re-render before resolving (v1 parity).
+    const { stableMs = 0, candidates = null } = opts || {};
     return new Promise((resolve) => {
+      const bySel = (sel) => {
+        try {
+          const nodes = document.querySelectorAll(sel);
+          return nodes[index ?? 0] || (index === undefined || index === null ? nodes[0] : null);
+        } catch (_) {
+          return null;
+        }
+      };
       const find = () => {
         if (selector && label && BARE_TAG_RE.test(selector.trim())) {
           // generic selector + label -> resolve by label first
@@ -80,12 +92,13 @@
           if (byLabel) return byLabel;
         }
         if (selector) {
-          try {
-            const nodes = document.querySelectorAll(selector);
-            const el = nodes[index ?? 0] || (index === undefined || index === null ? nodes[0] : null);
+          const el = bySel(selector);
+          if (el) return el;
+        }
+        if (candidates && candidates.length) {
+          for (const sel of candidates) {
+            const el = bySel(sel);
             if (el) return el;
-          } catch (_) {
-            /* invalid selector -> fall through to label lookup */
           }
         }
         if (label) {
@@ -94,25 +107,42 @@
         }
         return null;
       };
-      const existing = find();
-      if (existing) return resolve(existing);
 
       const started = Date.now();
-      const observer = new MutationObserver(() => {
+      let settled = false;
+      const done = (el) => {
+        if (settled) return;
+        settled = true;
+        resolve(el);
+      };
+      const tryFind = () => {
+        if (settled) return;
         const el = find();
         if (el) {
-          observer.disconnect();
-          resolve(el);
+          if (stableMs > 0) {
+            // React may replace the node right after render — re-query after
+            // the stability window and only resolve if it survived.
+            setTimeout(() => {
+              if (settled) return;
+              const again = find();
+              if (again) done(again);
+              // else keep waiting (observer + final timeout still active)
+            }, stableMs);
+          } else {
+            done(el);
+          }
         } else if (Date.now() - started > timeoutMs) {
-          observer.disconnect();
-          resolve(null);
+          done(null);
         }
-      });
+      };
+
+      const observer = new MutationObserver(tryFind);
       observer.observe(document.body, { childList: true, subtree: true });
+      tryFind();
       setTimeout(() => {
         observer.disconnect();
-        resolve(find());
-      }, timeoutMs);
+        if (!settled) done(find() || null);
+      }, timeoutMs + stableMs + 100);
     });
   }
 
@@ -205,6 +235,26 @@
   function clickElement(el) {
     if (!el) return false;
     el.scrollIntoView({ block: "center", behavior: "instant" });
+
+    // Radio: mirror the v1 approach that works on the RSC portal —
+    // set checked + change natively, then click the associated <label>
+    // (React state changes on the label click reliably).
+    if (el.type === "radio") {
+      el.checked = true;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      const label =
+        (el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null) ||
+        el.closest("label");
+      if (label) {
+        label.click();
+        label.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      } else {
+        el.click();
+        el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      }
+      return true;
+    }
+
     el.click();
     el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
     return true;
@@ -367,14 +417,71 @@
             failed++;
             continue;
           }
-          const btn = findButtonByText(container, String(value || ""));
+          // meta.texts = candidate button texts (label เปลี่ยนตาม portal build)
+          const texts = (meta.texts && meta.texts.length) ? meta.texts : [String(value || "")];
+          let btn = null;
+          for (const t of texts) {
+            btn = findButtonByText(container, t);
+            if (btn) break;
+          }
           if (btn && clickElement(btn)) {
             filled++;
+            await sleep(delay_ms || 150);
+            // meta.retry + verify_selector: คลิกเพิ่มแถวแล้วฟิลด์ถัดไปยังไม่เกิด
+            // -> คลิกซ้ำอีกครั้ง (v1 parity — React re-render บางทีต้อง click 2 ครั้ง)
+            if (meta.retry && meta.verify_selector) {
+              const appeared = await waitForElement(meta.verify_selector, undefined, 2500, null, null);
+              if (!appeared) {
+                const btn2 = findButtonByText(container, texts[0] || String(value || ""));
+                if (btn2 && clickElement(btn2)) await sleep(delay_ms || 150);
+              }
+            }
           } else {
-            errors.push(`ไม่พบปุ่ม "${value}"${selector && !isBareTag ? ` ใน ${selector}` : ""}`);
+            errors.push(
+              `ไม่พบปุ่ม "${texts.join('" หรือ "')}"${selector && !isBareTag ? ` ใน ${selector}` : ""}`
+            );
             failed++;
           }
-          await sleep(delay_ms || 150);
+          continue;
+        }
+
+        if (act === "ensure_click") {
+          // คลิกปุ่มเพิ่มแถว/กิจกรรม เฉพาะเมื่อ verify_selector ยังไม่มีอยู่
+          // (sweep self-heal) — ถ้ามีแล้ว = แถวครบแล้ว -> skip (ไม่เพิ่มซ้ำ)
+          const isBareTag = selector && BARE_TAG_RE.test(selector.trim());
+          const container = selector && !isBareTag
+            ? await waitForElement(selector, undefined, 6000, label, scopeName)
+            : null;
+          if (selector && !isBareTag && !container) {
+            errors.push(`ไม่พบ container: ${selector}`);
+            failed++;
+            continue;
+          }
+          const already = await waitForElement(meta.verify_selector, undefined, 300, null, null);
+          if (already) {
+            skipped++;
+            continue;
+          }
+          const texts = (meta.texts && meta.texts.length) ? meta.texts : [String(value || "")];
+          let btn = null;
+          for (const t of texts) {
+            btn = findButtonByText(container, t);
+            if (btn) break;
+          }
+          if (!btn) {
+            errors.push(`ไม่พบปุ่ม "${texts.join('" หรือ "')}" (ensure_click)`);
+            failed++;
+            continue;
+          }
+          clickElement(btn);
+          await sleep(delay_ms || 300);
+          // verify แถวเกิดจริง; ยังไม่เกิด -> คลิกซ้ำอีกครั้ง
+          const appeared = await waitForElement(meta.verify_selector, undefined, 2500, null, null);
+          if (!appeared) {
+            const btn2 = findButtonByText(container, texts[0] || String(value || ""));
+            if (btn2 && clickElement(btn2)) await sleep(delay_ms || 300);
+          }
+          filled++;
           continue;
         }
 
@@ -390,7 +497,10 @@
         }
 
         // timeout 4000ms: ฟิลด์ที่ไม่มีจริง (เช่นแถวที่เพิ่มไม่สำเร็จ) จะ fail เร็ว ไม่ค้างเป็นนาที
-        const el = await waitForElement(selector, index, 4000, label, scopeName);
+        const el = await waitForElement(selector, index, 4000, label, scopeName, {
+          stableMs: meta.stable_ms || 0,
+          candidates: meta.candidates || null,
+        });
         if (!el) {
           errors.push(
             `ไม่พบ element: ${selector}${label ? ` (label "${label}")` : ""}${index !== undefined && index !== null ? `[${index}]` : ""}`
@@ -454,6 +564,9 @@
         name: el.name || "",
         type: el.type || el.tagName.toLowerCase(),
         label: (el.closest("label") ? el.closest("label").innerText : "").trim().slice(0, 60),
+        placeholder: (el.placeholder || "").slice(0, 60),
+        aria: (el.getAttribute("aria-label") || "").slice(0, 60),
+        value: el.type === "password" ? "" : String(el.value || "").slice(0, 40),
       }));
       sendResponse({ controls, url: location.href });
       return true;

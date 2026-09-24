@@ -1,65 +1,56 @@
-# Technical Specification & Context: Streamlit PoC for DOCX Memo Extractor & Auto-Fill System
+# Technical Specification & Context: Streamlit PoC (v.1) for DOCX Memo Extractor & Chrome Auto-Fill Extension
 
-## 1. System Goal & Core Value Proposition
-- **Problem:** ระบบเดิมใช้ Wizard Form / Accordion 5-7 ขั้นตอน บังคับให้ผู้ใช้กรอกข้อมูลมือทีละช่อง โดยไม่มีระบบ Auto-fill จากไฟล์ Word (DOCX) เดิม
-- **Solution:** สร้าง PoC บน Streamlit เพื่อพิสูจน์แนวคิด: "Upload DOCX -> Auto-Extract & Map to Blocks -> Auto-fill Form & Live Preview -> Export to DB/Excel/JSON"
-
----
-
-## 2. File & Project Structure Required
-my-doc-extraction-poc/
-├── app.py              # Main Application (UI, Logic, Auto-fill Mapping, Live Preview)
-├── requirements.txt    # Python Dependencies (streamlit, python-docx, pandas, openpyxl)
-└── PROMPT_BUILD_POC.md # This Context Specification File
+## 1. System Goal & Core Value Proposition (v.1)
+- **Problem:** ระบบเดิมใช้ Wizard Form / Accordion หลายขั้นตอน บังคับให้ผู้ใช้กรอกข้อมูลทีละช่องบนเว็บปลายทางโดยไม่มีระบบ Auto-fill จากเอกสาร DOCX เดิม
+- **Solution (v.1):** 
+  1. สกัดข้อมูลจาก DOCX บันทึกข้อความผ่าน [app_v1.py](file:///e:/project/doc%20to%20smart%20data/app_v1.py)
+  2. ส่งออกโครงสร้าง JSON Standard
+  3. ใช้งาน Chrome Extension (v.1) ในการอ่านค่า JSON และ Auto-Fill ลงฟิลด์ฟอร์มบนเว็บปลายทางให้อัตโนมัติ
 
 ---
 
-## 3. Data Field Extraction & Mapping Rules
-
-### Group A: Auto-Extractable Fields (จากไฟล์ DOCX บันทึกข้อความ)
-1. **เลขที่หนังสือ (`doc_number`):** Regex แพทเทิร์น `อว\.?\s*\d+(\.\d+)*/.*` หรือข้อความหลัง "ที่"
-2. **วันที่หนังสือ (`doc_date`):** ข้อความหลัง "วันที่" แปลงเป็น String/Date
-3. **ชื่อ-นามสกุล ผู้ขอ (`requester_name`):** ข้อความในวงเล็บใต้บล็อกลายเซ็น เช่น `(นายรณกร อำพันธ์ศรี)`
-4. **ตำแหน่ง ผู้ขอ (`requester_position`):** ข้อความบรรทัดถัดจากชื่อผู้ขอ เช่น `วิศวกร`
-5. **เรื่อง / ชื่อโครงการ (`project_title`):** ข้อความหลังคำว่า "เรื่อง"
-6. **บริบทโครงการ / ย่อหน้าแรก (`project_context`):** ย่อหน้าแรกที่ขึ้นต้นด้วย "ตามที่..."
-7. **วัตถุประสงค์ & คำกริยา (`project_objective`):** ย่อหน้าที่ขึ้นต้นด้วย "ในการนี้..."
-8. **สถานที่ & จังหวัด (`location_province`):** ข้อความหลัง "ณ ..." และ "จ...."
-9. **วันที่ดำเนินงาน (`schedule_text`):** ช่วงวันที่ที่ระบุในเนื้อหาหรือตารางกำหนดการ
-10. **วงเงินรวม (บาท) (`budget_amount`):** ตัวเลขรวมงบประมาณ เช่น `21200`
-11. **วงเงินรวม (ตัวอักษร) (`budget_text`):** สกัดจากวงเล็บหลังตัวเลข หรือใช้ Logic แปลงตัวเลขอัตโนมัติ
-
-### Group B: Manual Input / System Integration Fields (ผู้ใช้เลือก/กรอกเพิ่ม)
-1. **รหัสงบประมาณ (`acc_code`):** Dropdown ให้ผู้ใช้เลือก (e.g. `ACC-2026-RD68`, `ACC-2026-SF01`)
-2. **ปีงบประมาณ (`budget_year`):** Auto-fill จาก ACC Code ที่เลือก
-3. **แหล่งงบประมาณ (`budget_source`):** Auto-fill จาก ACC Code ที่เลือก
-4. **เอกสารแนบ (`attachment_pdf`):** File Uploader เพิ่มเติมสำหรับแนบ PDF
+## 2. File & Project Structure (v.1)
+```
+doc to smart data/
+├── app_v1.py              # Main Streamlit Application v.1 (UI, Extraction, Live Preview, JSON Export)
+├── PROMPT_BUILD_POC_v1.md # Technical Context & Specification v.1
+├── requirements.txt       # Dependencies
+└── extension_v1/          # Chrome Extension (v.1)
+    ├── manifest.json      # Chrome Extension Manifest V3
+    ├── popup.html         # Extension UI Modal
+    ├── popup.js           # Clipboard reader & Message sender logic
+    └── content.js         # Intelligent Form Injector & Auto-filler
+```
 
 ---
 
-## 4. UI/UX Requirements for Streamlit App (`app.py`)
+## 3. Data Field Extraction & Mapping Standard (v.1)
 
-1. **Top Section (Smart Import Zone):**
-   - File Uploader สำหรับลากไฟล์ DOCX มาวาง
-   - เมื่ออัปโหลดไฟล์ ให้รัน `python-docx` สกัดข้อมูลตาม Rule Group A แล้วเขียนลง `st.session_state` ทันที
-
-2. **Main Layout (Split Screen / 2 Columns):**
-   - **Left Column (Form / Block Editor):**
-     - แบ่งเป็น 5 Sections ตามฟอร์มเดิม (1. ข้อมูลทั่วไป, 2. ข้อมูลผู้ขอ, 3. รายละเอียดโครงการ, 4. สถานที่/วันที่, 5. วงเงิน)
-     - ช่อง Input ทั้งหมดจะถูก **Auto-fill** จากข้อมูลที่สกัดได้
-     - มี Dropdown `ACC Code` ใน Section 1 ให้ผู้ใช้เลือกเพิ่ม
-     - รองรับการแก้ไขข้อมูลในกล่องข้อความ และ `st.data_editor` สำหรับตาราง
-   - **Right Column (Live A4 Preview):**
-     - เรนเดอร์กระดาษ A4 (HTML/CSS) พรีวิวบันทึกข้อความจริงแบบ Real-time
-     - ข้อมูลใน A4 จะสะท้อนการเปลี่ยนแปลงจาก Form ฝั่งซ้ายมือทันที
-
-3. **Export Section:**
-   - ปุ่ม **Download JSON** (สำหรับส่งต่อให้ Database/API)
-   - ปุ่ม **Download Excel** (สำหรับ Export ข้อมูลลงตาราง Excel)
+| Field Key | Thai Label / Description | Target Input Selector / Aliases |
+| :--- | :--- | :--- |
+| `doc_number` | เลขที่หนังสือ | `doc_number`, `doc_no`, `document_no`, `เลขที่หนังสือ`, `ที่` |
+| `doc_date` | วันที่หนังสือ | `doc_date`, `document_date`, `วันที่หนังสือ`, `วันที่` |
+| `agency_name` | ส่วนงาน / หน่วยงาน | `agency_name`, `department`, `ส่วนงาน`, `หน่วยงาน` |
+| `recipient_title` | เรียน (ผู้รับหนังสือ) | `recipient_title`, `เรียน`, `ผู้รับหนังสือ` |
+| `requester_name` | ชื่อผู้ขออนุมัติ | `requester_name`, `applicant_name`, `ชื่อผู้ขอ`, `ผู้ขออนุมัติ` |
+| `requester_position` | ตำแหน่งผู้ขออนุมัติ | `requester_position`, `position`, `ตำแหน่ง` |
+| `project_title` | เรื่อง / ชื่อโครงการ | `project_title`, `subject`, `title`, `เรื่อง`, `ชื่อโครงการ` |
+| `project_context` | บริบทโครงการ (ย่อหน้า 1) | `project_context`, `context`, `รายละเอียด`, `ความเป็นมา` |
+| `project_objective` | วัตถุประสงค์ (ย่อหน้า 2) | `project_objective`, `objective`, `วัตถุประสงค์` |
+| `action_details` | การดำเนินงาน | `action_details`, `action`, `การดำเนินงาน` |
+| `location_name` | สถานที่ | `location_name`, `location`, `สถานที่` |
+| `province_name` | จังหวัด | `province_name`, `province`, `จังหวัด` |
+| `schedule_text` | วันที่/กำหนดการ | `schedule_text`, `schedule`, `กำหนดการ`, `ระยะเวลา` |
+| `budget_amount` | วงเงินรวม (ตัวเลข) | `budget_amount`, `budget`, `amount`, `จำนวนเงิน`, `วงเงิน` |
+| `budget_text` | วงเงินรวม (ตัวอักษร) | `budget_text`, `budget_str`, `จำนวนเงินตัวอักษร` |
+| `acc_code` | รหัสงบประมาณ | `acc_code`, `budget_code`, `รหัสงบประมาณ` |
 
 ---
 
-## 5. Technical Requirements & Dependencies
-- Use **Pure Python** with `streamlit`, `python-docx`, `pandas`, `openpyxl`.
-- Avoid hardcoded local paths (Use `io.BytesIO` for uploaded files).
-- Provide clean Error Handling if uploaded DOCX misses some sections.
+## 4. Chrome Extension (v.1) Installation & Usage
+
+1. เปิด Chrome ไปที่ `chrome://extensions/`
+2. เปิดใช้งาน **Developer mode** (โหมดผู้พัฒนา) มุมขวาบน
+3. กด **Load unpacked** (โหลดส่วนขยายที่ถอดรหัสแล้ว)
+4. เลือกโฟลเดอร์ `e:\project\doc to smart data\extension_v1`
+5. เมื่อใช้งาน Streamlit `app_v1.py` ให้กดปุ่ม **สร้าง JSON Payload** แล้วคัดลอก JSON มาเปิดส่วนขยาย Chrome Extension แล้วกด **⚡ กรอกฟอร์มหน้าเว็บปลายทาง (Auto-Fill)**

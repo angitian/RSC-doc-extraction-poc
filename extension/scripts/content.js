@@ -355,9 +355,14 @@
         }
 
         if (act === "click_button") {
-          // selector is the optional container CSS; value is the button text
-          const container = selector ? await waitForElement(selector, undefined, 6000, label, scopeName) : null;
-          if (selector && !container) {
+          // selector is the optional container CSS; value is the button text.
+          // bare-tag selector ("button") = ไม่มี container -> ค้นปุ่มทั้งหน้า
+          // (ห้าม waitForElement("button") เพราะจะคืนปุ่มแรกสุดแทน container)
+          const isBareTag = selector && BARE_TAG_RE.test(selector.trim());
+          const container = selector && !isBareTag
+            ? await waitForElement(selector, undefined, 6000, label, scopeName)
+            : null;
+          if (selector && !isBareTag && !container) {
             errors.push(`ไม่พบ container: ${selector}`);
             failed++;
             continue;
@@ -366,7 +371,7 @@
           if (btn && clickElement(btn)) {
             filled++;
           } else {
-            errors.push(`ไม่พบปุ่ม "${value}"${selector ? ` ใน ${selector}` : ""}`);
+            errors.push(`ไม่พบปุ่ม "${value}"${selector && !isBareTag ? ` ใน ${selector}` : ""}`);
             failed++;
           }
           await sleep(delay_ms || 150);
@@ -384,7 +389,8 @@
           continue;
         }
 
-        const el = await waitForElement(selector, index, 6000, label, scopeName);
+        // timeout 4000ms: ฟิลด์ที่ไม่มีจริง (เช่นแถวที่เพิ่มไม่สำเร็จ) จะ fail เร็ว ไม่ค้างเป็นนาที
+        const el = await waitForElement(selector, index, 4000, label, scopeName);
         if (!el) {
           errors.push(
             `ไม่พบ element: ${selector}${label ? ` (label "${label}")` : ""}${index !== undefined && index !== null ? `[${index}]` : ""}`

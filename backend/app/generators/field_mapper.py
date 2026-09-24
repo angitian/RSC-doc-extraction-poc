@@ -141,7 +141,9 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
         # ไม่ต้องใช้ label (label fallback จะชี้ผิดแถวถ้า selector พัง)
         for i, row in enumerate(breakdown):
             if i > 0:
-                actions.append(_act("button", "click_button", "เพิ่มรายการ", delay_ms=350))
+                # selector ว่าง = ค้นปุ่มทั้งหน้าจากข้อความ (อย่าใช้ "button" —
+                # content script จะเข้าใจผิดว่าเป็น container)
+                actions.append(_act("", "click_button", "เพิ่มรายการ", delay_ms=350))
             actions.append(_act(f"#expense-row-type-{i}", "set_select", "item"))
             actions.append(_act(f"#expense-number-{i}", "set_value", str(i + 1)))
             actions.append(_act(f"#expense-description-{i}", "set_value", row.get("รายการ", "")))
@@ -168,7 +170,7 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
                                  extracted.get("schedule_text", ""), label="รายละเอียดใต้ชื่อเรื่อง"))
         for di, day in enumerate(schedule):
             if di > 0:
-                actions.append(_act("button", "click_button", "เพิ่มวันหรือช่วงกิจกรรม", delay_ms=350))
+                actions.append(_act("", "click_button", "เพิ่มวันหรือช่วงกิจกรรม", delay_ms=350))
             actions.append(_act(f"#schedule-date-{di}", "set_value", day.get("date_title", "")))
             if day.get("location"):
                 actions.append(_act(f"#schedule-location-{di}", "set_value", day.get("location", "")))

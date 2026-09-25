@@ -228,6 +228,19 @@ input[type="url"], input[type="text"] {
 .rc-meta-row .k { color: var(--muted); }
 .rc-meta-row .v { font-weight: 600; text-align: right; }
 
+/* Prominent disclosure (privacy) */
+.privacy-bar {
+  font-size: 10px;
+  color: var(--muted);
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 7px 9px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.privacy-bar a { color: #15803d; font-weight: 600; }
+
 /* Log */
 .log {
   background: #0f172a;

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>นโยบายความเป็นส่วนตัว — RSC Doc → Smart Data</title>
+<style>
+  body { font-family: "Segoe UI", "Noto Sans Thai", system-ui, sans-serif; max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; color: #1f2937; line-height: 1.7; }
+  h1 { font-size: 22px; color: #111827; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+  h2 { font-size: 16px; color: #1e3a8a; margin-top: 28px; }
+  li { margin-bottom: 6px; }
+  .eng { margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 14px; color: #374151; }
+</style>
+</head>
+<body>
+
+<h1>นโยบายความเป็นส่วนตัว (Privacy Policy)</h1>
+<p><strong>RSC Doc → Smart Data</strong> — ส่วนขยาย Chrome<br/>
+อัปเดตล่าสุด: 25 กันยายน 2569</p>
+
+<h2>1. บทนำ</h2>
+<p>ส่วนขยาย Chrome "RSC Doc → Smart Data" พัฒนาเพื่อช่วยบุคลากรในหน่วยงานสกัดข้อมูลจาก
+เอกสารราชการ (.docx / .pdf / .xlsx) แล้วกรอกข้อมูลลงแบบฟอร์มเว็บราชการ
+<code>https://rsc-approval.kmutt.ac.th/</code> โดยอัตโนมัติ</p>
+
+<h2>2. ข้อมูลที่ส่วนขยายจัดการ</h2>
+<ul>
+  <li><strong>ไฟล์เอกสารที่ผู้ใช้เลือก</strong> — ไฟล์ .docx/.pdf/.xlsx ที่ผู้ใช้ลาก/เลือกเข้าในส่วนขยาย เพื่อให้ระบบสกัดข้อมูล (เช่น ชื่อโครงการ, ชื่อ-นามสกุล, ตำแหน่ง, วันที่, วงเงิน/ค่าใช้จ่าย)</li>
+  <li><strong>ข้อมูลที่สกัดได้จากเอกสาร</strong> — ข้อมูลส่วนบุคคลที่ปรากฏในเอกสาร (ชื่อ, ตำแหน่ง, หน่วยงาน) และข้อมูลงบประมาณ/ค่าใช้จ่าย</li>
+  <li><strong>ชื่อไฟล์</strong> และขนาดไฟล์</li>
+  <li><strong>การตั้งค่าภายในเครื่อง</strong> — API URL ที่ผู้ใช้บันทึก (เก็บใน <code>chrome.storage</code> ของเบราว์เซอร์เท่านั้น)</li>
+</ul>
+
+<h2>3. การใช้และการส่งข้อมูล</h2>
+<ul>
+  <li>เอกสารที่ผู้ใช้เลือกจะถูกส่งผ่าน <strong>HTTPS</strong> ไปยังเซิร์ฟเวอร์ประมวลผลของส่วนขยาย (<code>https://rsc-extraction-api.onrender.com</code>) เพื่อทำการสกัดและสร้างคำสั่งกรอกแบบฟอร์ม</li>
+  <li><strong>เซิร์ฟเวอร์ไม่เก็บไฟล์หรือข้อมูลถาวร</strong> — ประมวลผลแบบ stateless แล้วส่งผลกลับมาทันที</li>
+  <li>ข้อมูลที่สกัดได้จะถูกกรอกลงแบบฟอร์มเว็บราชการ <strong>เฉพาะเมื่อผู้ใช้กดปุ่ม "ยิงข้อมูลลงแบบฟอร์ม" เท่านั้น</strong></li>
+</ul>
+
+<h2>4. การแชร์ข้อมูล</h2>
+<ul>
+  <li><strong>ไม่มีการขายหรือแชร์ข้อมูลให้บุคคลที่สาม</strong> ในเชิงพาณิชย์</li>
+  <li>ข้อมูลจะถูกส่งไปยังเว็บราชการปลายทาง (<code>rsc-approval.kmutt.ac.th</code>) ตามคำสั่งของผู้ใช้เท่านั้น</li>
+  <li>ไม่มีการส่งข้อมูลไปยัง Google หรือผู้ให้บริการอื่น</li>
+</ul>
+
+<h2>5. การเก็บรักษา</h2>
+<ul>
+  <li>ส่วนขยาย<strong>ไม่จัดเก็บเอกสาร</strong>ในฐานข้อมูลถาวร — ข้อมูลอยู่ในความจำระหว่างการใช้งานครั้งนั้นเท่านั้น</li>
+  <li>การตั้งค่า (API URL) เก็บในเครื่องผู้ใช้ (chrome.storage) — ผู้ใช้ลบได้โดยการล้างข้อมูลส่วนขยาย</li>
+</ul>
+
+<h2>6. ความปลอดภัย</h2>
+<ul>
+  <li>การรับ-ส่งทั้งหมดผ่าน HTTPS</li>
+  <li>ส่วนขยายไม่มีการรันโค้ดจากภายนอก (no remote code)</li>
+  <li>ขอสิทธิ์เฉพาะที่จำเป็นต่อการทำงาน (ดูรายการสิทธิ์ใน Chrome Web Store)</li>
+</ul>
+
+<h2>7. สิทธิ์ของผู้ใช้</h2>
+<ul>
+  <li>ผู้ใช้สามารถ<strong>ถอนสิทธิ์/ลบส่วนขยาย</strong>ได้ทุกเมื่อผ่านการตั้งค่า Chrome</li>
+  <li>ผู้ใช้สามารถเลือกไฟล์/กดยิงข้อมูลได้เองทุกครั้ง — ไม่มีการทำงานอัตโนมัติโดยไม่ได้รับความยินยอม</li>
+</ul>
+
+<h2>8. การติดต่อ</h2>
+<p>หากมีข้อสงสัยเกี่ยวกับนโยบายนี้ หรือต้องการขอให้ลบข้อมูล ติดต่อหน่วยงานผู้ดูแลระบบ:<br/>
+<strong>หน่วยงาน:</strong> สถาบันพัฒนาและฝึกอบรมโรงงานต้นแบบ (สรบ.) มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี</p>
+
+<div class="eng">
+<h2>English Summary</h2>
+<p><strong>Data handled:</strong> document files (.docx/.pdf/.xlsx) the user chooses, data extracted from them (names, positions, dates, amounts), filenames, and local settings (API URL stored only in browser chrome.storage).</p>
+<p><strong>How data is used:</strong> documents are sent over <strong>HTTPS</strong> to the extension's processing server (<code>https://rsc-extraction-api.onrender.com</code>) for extraction — the server is <strong>stateless, no persistent storage</strong>. Extracted data is submitted to the government portal (<code>https://rsc-approval.kmutt.ac.th/</code>) <strong>only when the user clicks the fill button</strong>.</p>
+<p><strong>Sharing:</strong> no sale or sharing to third parties. Data is sent only to the government portal per user action.</p>
+<p><strong>Security &amp; retention:</strong> all communication over HTTPS; no remote code; no persistent document storage.</p>
+<p><strong>User rights:</strong> the extension can be uninstalled at any time; all actions are user-initiated.</p>
+<p><strong>Contact:</strong> RSC office, King Mongkut's University of Technology Thonburi (KMUTT).</p>
+</div>
+
+</body>
+</html>

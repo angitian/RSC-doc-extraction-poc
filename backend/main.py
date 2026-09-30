@@ -31,6 +31,7 @@ from app.config import (
 )
 from app.extraction.classifier import classify_document
 from app.extraction.dispatcher import extract_file
+from app.extraction import template_registry
 from app.generators.excel_generator import generate_excel_bytes, generate_fill_template_bytes
 from app.generators.field_mapper import PROFILES, build_field_mappings
 from app.generators.pdf_generator import generate_annex_pdf_bytes
@@ -71,6 +72,7 @@ def _build_summary(extracted: Dict[str, Any], rollup: Dict[str, Any],
             "travel_request": "คำขออนุมัติเดินทาง",
             "expense_settlement": "รายงาน/ขอเบิกค่าใช้จ่าย",
             "work_report": "รายงานผลการดำเนินงาน",
+            **template_registry.doc_type_labels(),
         }.get(doc_type, doc_type),
         "confidence": confidence,
         "project_name": extracted.get("project_title", ""),
@@ -114,6 +116,7 @@ async def extract(
     page_snapshot: str = Form(""),
     outputs: str = Form("excel"),  # comma list: excel | pdf (PDF เฉพาะเมื่อขอ)
     attach_sections: str = Form(""),  # comma list: expense | schedule (ผู้ใช้แนบ PDF เอง)
+    skip_sections: str = Form(""),  # comma list: expense | schedule (ผู้ใช้ปิดไม่กรอก)
 ):
     if mode not in ("full_table", "annex_pdf"):
         raise HTTPException(status_code=400, detail=f"mode ไม่ถูกต้อง: {mode} (ต้องเป็น full_table หรือ annex_pdf)")
@@ -138,9 +141,14 @@ async def extract(
 
     rollup = extract_budget_rollup(extracted, extracted.get("breakdown") or [])
 
+    # Warnings from template-anchored extraction (attached by the dispatcher)
+    warnings.extend(extracted.pop("_warnings", []))
+
     attach = [s.strip().lower() for s in attach_sections.split(",") if s.strip()]
+    skip = [s.strip().lower() for s in skip_sections.split(",") if s.strip() in {"expense", "schedule"}]
     field_mappings, map_warnings, profile_info = build_field_mappings(
-        extracted, mode, target_url, page_snapshot=snapshot, attach_sections=attach or None)
+        extracted, mode, target_url, page_snapshot=snapshot, attach_sections=attach or None,
+        skip_sections=skip or None)
     warnings.extend(map_warnings)
 
     summary = _build_summary(extracted, rollup, doc_type, confidence)
@@ -257,6 +265,8 @@ async def fill(values: Dict[str, Any]):
     mode = str(values.get("mode") or "full_table")
     if mode not in ("full_table", "annex_pdf"):
         mode = "full_table"
+    skip = [s.strip().lower() for s in str(values.get("skip_sections") or "").split(",")
+            if s.strip().lower() in {"expense", "schedule"}]
     vals: Dict[str, Any] = dict(values.get("values") or {})
 
     if profile_id:
@@ -274,7 +284,8 @@ async def fill(values: Dict[str, Any]):
         extracted["project_title"] = extracted.get("event_title", "")
 
     field_mappings, warnings, info = build_field_mappings(
-        extracted, mode, target_url, page_snapshot=snapshot, force_profile_id=profile_id or None)
+        extracted, mode, target_url, page_snapshot=snapshot, force_profile_id=profile_id or None,
+        skip_sections=skip or None)
     rollup = extract_budget_rollup(extracted, extracted.get("breakdown") or [])
     summary = _build_summary(extracted, rollup, info.get("form_type") or "manual", 1.0)
 

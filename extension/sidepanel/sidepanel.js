@@ -20,6 +20,8 @@ const els = {
   docxFileInfo: $("#docx-file-info"),
   extractError: $("#extract-error"),
   pdfList: $("#pdf-list"),
+  toggleExpense: $("#toggle-expense"),
+  toggleSchedule: $("#toggle-schedule"),
   reviewCard: $("#review-card"),
   rcType: $("#rc-type"),
   rcMeta: $("#rc-meta"),
@@ -104,6 +106,47 @@ function setStatus(text, cls) {
   els.status.textContent = text;
   els.status.className = `pill pill-${cls}`;
 }
+
+// ---------------------------------------------------------------------------
+// ตัวเลือกการกรอก section (ค่าใช้จ่าย / กำหนดการ) — ปิด = ข้ามไม่กรอกบนเว็บ
+// ---------------------------------------------------------------------------
+const SECTION_LABELS = { expense: "ประมาณการค่าใช้จ่าย", schedule: "กำหนดการ" };
+
+function getSkipSections() {
+  const skip = [];
+  if (!els.toggleExpense.checked) skip.push("expense");
+  if (!els.toggleSchedule.checked) skip.push("schedule");
+  return skip;
+}
+
+function renderToggleStates() {
+  const setState = (el, label) => {
+    const stateEl = el.parentElement.querySelector(".toggle-state");
+    const on = el.checked;
+    stateEl.textContent = on ? "กรอกอัตโนมัติ" : "ปิดการกรอก";
+    stateEl.title = on ? "จะกรอกตารางนี้จากเอกสาร" : "ข้าม section นี้ ไม่กรอก/ไม่สร้างตารางบนเว็บ";
+  };
+  setState(els.toggleExpense, SECTION_LABELS.expense);
+  setState(els.toggleSchedule, SECTION_LABELS.schedule);
+}
+
+// toggle เปลี่ยน -> refresh mapping (เหมือน PDF เปลี่ยน) + เตือนถ้ามี PDF ของ section ที่ปิด
+[els.toggleExpense, els.toggleSchedule].forEach((toggle) => {
+  toggle.addEventListener("change", () => {
+    renderToggleStates();
+    const skip = getSkipSections();
+    pdfItems.forEach((p) => {
+      if (p.type && skip.includes(p.type)) {
+        log(`⚠️ section "${SECTION_LABELS[p.type]}" ถูกปิด — PDF "${p.name}" จะไม่ถูกแนบ`, "err");
+      }
+    });
+    if (lastFile) {
+      extractCurrentFile(); // re-extract เพื่อให้ field_mappings ตรงกับ toggle
+    } else {
+      updateActionHub();
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Active tab helpers
@@ -316,6 +359,8 @@ async function extractCurrentFile() {
   form.append("outputs", "excel");
   form.append("target_url", currentTargetUrl);
   if (attach.length) form.append("attach_sections", attach.join(","));
+  const skipSections = getSkipSections();
+  if (skipSections.length) form.append("skip_sections", skipSections.join(","));
   if (snapshot && snapshot.length) form.append("page_snapshot", JSON.stringify(snapshot));
 
   const controller = new AbortController();
@@ -461,6 +506,8 @@ els.btnFill.addEventListener("click", async () => {
       form.append("outputs", "excel");
       form.append("target_url", currentTargetUrl);
       if (attach.length) form.append("attach_sections", attach.join(","));
+      const skipSections = getSkipSections();
+      if (skipSections.length) form.append("skip_sections", skipSections.join(","));
       if (snapshot && snapshot.length) form.append("page_snapshot", JSON.stringify(snapshot));
       const res = await fetch(`${getApiUrl()}/api/v1/extract`, { method: "POST", body: form });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -478,6 +525,7 @@ els.btnFill.addEventListener("click", async () => {
           target_url: currentTargetUrl,
           page_snapshot: snapshot,
           mode: "annex_pdf",
+          skip_sections: getSkipSections().join(","),
           values: {},
         }),
       });
@@ -719,6 +767,7 @@ els.btnQuickFill.addEventListener("click", async () => {
         profile_id: els.qfProfile.value,
         target_url: currentTargetUrl,
         page_snapshot: snapshot,
+        skip_sections: getSkipSections().join(","),
         values,
       }),
     });
@@ -751,6 +800,7 @@ loadApiUrl();
 els.saveApi.addEventListener("click", saveApiUrl);
 loadForms();
 updateVersionBadge();
+renderToggleStates();
 // Quick Form starts collapsed to keep the panel tidy (ย่อไว้ก่อน)
 els.quickForm.removeAttribute("open");
 setStatus("พร้อมใช้งาน", "idle");

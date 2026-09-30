@@ -1,0 +1,101 @@
+{
+  "template_id": "rsc_memo",
+  "label": "บันทึกข้อความขออนุมัติดำเนินงาน/งบประมาณ (ศูนย์ส่งเสริมฯ RSC)",
+  "docx": "บันทึกข้อความ_rsc_blank.docx",
+  "required_anchors": ["ส่วนงาน", "ที่ อว", "เรื่อง", "จึงเรียนมา"],
+  "optional_anchors": ["โทร", "วันที่", "ตามที่", "ในการนี้", "ขอถัวเฉลี่ย", "ข้าพเจ้า", "วิศวกร"],
+  "optional_threshold": 0.4,
+  "defaults": {
+    "action_verb": "ดำเนินงาน",
+    "target_group_name": "ผู้เข้าร่วม",
+    "target_group_quantity": "1",
+    "target_group_unit": "คน"
+  },
+  "fields": [
+    {
+      "key": "agency_name",
+      "type": "line_regex",
+      "pattern": "^ส่วนงาน\\s+(?P<agency_name>.+?)\\s+โทร[\\.:]?\\s*(?P<contact_phone>[0-9][0-9\\-\\s]{2,14})$"
+    },
+    {
+      "type": "line_regex",
+      "pattern": "^ที่\\s*อว[\\.:]?\\s*(?P<doc_number>[0-9\\.\\/]+)\\s+วันที่\\s*[:：]?\\s*(?P<doc_date>\\d{1,2}\\s+[^\\s\\d]+\\s+\\d{2,4})$"
+    },
+    {
+      "key": "project_title",
+      "type": "line_regex",
+      "pattern": "^เรื่อง\\s*[:：]?\\s*(?P<project_title>.+)$"
+    },
+    {
+      "key": "recipient_title",
+      "type": "line_startswith",
+      "match": "เรียน",
+      "pattern": "^เรียน\\s*[:：]?\\s*(?P<recipient_title>.+)$"
+    },
+    {
+      "key": "project_context",
+      "type": "prefix_cut",
+      "start": "ตามที่",
+      "cut_through": ["ได้ดำเนินงาน", "ได้รับงบประมาณ", "ได้ดำเนินการ"]
+    },
+    {
+      "type": "line_regex",
+      "pattern": "^ดังนั้น\\s*(?P<project_objective>.*?)\\s*ข้าพเจ้า\\s*(?P<requester_name>.+?)\\s*ตำแหน่ง\\s*(?P<requester_position>.+?)\\s*ขอ[อนุมัติ]*\\s*ดำเนินงาน\\s*(?P<action_details>.+?)(?:(?<!\\S)ณ(?!\\S)\\s*(?P<location_name>.+?)\\s*จังหวัด\\s*(?P<province_name>[^\\s]+))?\\s*ระหว่างวันที่\\s*(?P<schedule_text>.+?)(?:\\s*โดยมีกลุ่มเป้าหมายประกอบด้วย\\s*(?P<target_group_name>.+?)\\s*จำนวน\\s*(?P<target_group_quantity>\\d+)\\s*(?P<target_group_unit>คน|ราย|แห่ง))?$"
+    },
+    {
+      "key": "project_objective",
+      "type": "line_startswith",
+      "match": "ในการนี้",
+      "only_if_empty": true,
+      "pattern": "ในการนี้(?P<project_objective>.+?)(?:มีค่าใช้จ่าย|จำนวน|และมีประมาณการค่าใช้จ่ายดังนี้|มีรายละเอียดและประมาณการค่าใช้จ่ายดังนี้|จึงเรียนมา|$)"
+    },
+    {
+      "key": "action_details",
+      "type": "line_startswith",
+      "match": "ในการนี้",
+      "only_if_empty": true,
+      "pattern": "(?:จะได้ดำเนินการ|จะดำเนินการ|ขออนุมัติ)\\s*(?P<action_details>.+?)(?:มีค่าใช้จ่าย|มีรายละเอียด|มีกำหนดการเดินทาง|มีผู้เดินทาง|และมีประมาณการ|จำนวน|$)"
+    },
+    {
+      "key": "location_name",
+      "type": "fulltext_regex",
+      "only_if_empty": true,
+      "pattern": "(?<!\\S)ณ(?!\\S)\\s*(?P<location_name>[^\\n]+?)\\s*(?:จ\\.|จังหวัด)\\s*(?P<province_name>[^\\s,]+)"
+    },
+    {
+      "key": "schedule_text",
+      "type": "fulltext_regex",
+      "only_if_empty": true,
+      "pattern": "(?:มีกำหนดการเดินทางวันที่|ในวันที่|ระหว่างวันที่|กำหนดการเดินทางวันที่)\\s*(?P<schedule_text>.+?)(?=\\s*และมีประมาณการ|$)"
+    },
+    {
+      "type": "fulltext_regex",
+      "pattern": "(?:จำนวน|รวม|รวมเป็นเงินทั้งสิ้น|มีค่าใช้จ่าย|เป็นเงิน)\\s*(?P<budget_amount>[\\d\\,]+(?:\\.\\d+)?)\\s*บาท\\s*\\((?P<budget_text>[^\\)]+)\\)"
+    },
+    {
+      "key": "budget_amount",
+      "type": "fulltext_regex",
+      "only_if_empty": true,
+      "pattern": "(?:จำนวน|รวม|รวมเป็นเงินทั้งสิ้น|มีค่าใช้จ่าย|เป็นเงิน)\\s*(?P<budget_amount>[\\d\\,]+(?:\\.\\d+)?)\\s*บาท"
+    },
+    {
+      "key": "budget_source",
+      "type": "fulltext_regex",
+      "pattern": "จากงบประมาณ\\s*(?P<budget_source>[^\\n]+)"
+    },
+    {
+      "key": "closing_text",
+      "type": "line_startswith",
+      "match": "จึงเรียนมา",
+      "pattern": "จึงเรียนมา(?P<closing_text>.*)$"
+    },
+    {
+      "type": "special",
+      "name": "requester_signature"
+    },
+    {
+      "type": "special",
+      "name": "requester_position"
+    }
+  ]
+}

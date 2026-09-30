@@ -49,6 +49,22 @@
     <div id="pdf-list" class="pdf-list"></div>
   </section>
 
+  <!-- ตัวเลือกการกรอก (เปิด/ปิด section) -->
+  <section class="card">
+    <h2>ตัวเลือกการกรอก (เอกสารแนบ)</h2>
+    <label class="toggle-row" title="เปิด = สกัดและกรอกตารางค่าใช้จ่ายอัตโนมัติ">
+      <input type="checkbox" id="toggle-expense" checked />
+      <span class="toggle-label">ประมาณการค่าใช้จ่าย</span>
+      <span class="toggle-state">กรอกอัตโนมัติ</span>
+    </label>
+    <label class="toggle-row" title="เปิด = สกัดและกรอกตารางกำหนดการอัตโนมัติ">
+      <input type="checkbox" id="toggle-schedule" checked />
+      <span class="toggle-label">กำหนดการ</span>
+      <span class="toggle-state">กรอกอัตโนมัติ</span>
+    </label>
+    <p class="hint">ปิด = ข้าม section นี้ ไม่สร้างตาราง/ไม่กรอกบนเว็บ (ยังสกัดให้ตรวจ + Excel/TSV ได้)</p>
+  </section>
+
   <!-- Quick Form (B) — กรอกตรงๆ ไม่ต้องมีเอกสาร -->
   <details id="quick-form" class="card">
     <summary>⚡ กรอกด่วน (Quick Form) — ไม่ต้องใช้เอกสาร</summary>

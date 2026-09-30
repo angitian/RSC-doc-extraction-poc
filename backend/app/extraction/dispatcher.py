@@ -14,6 +14,7 @@ from .conference_extractor import extract_conference
 from .docx_extractor import extract_docx
 from .excel_extractor import extract_excel
 from .pdf_extractor import extract_pdf
+from . import template_registry
 
 ExtractorFn = Callable[[bytes], Dict[str, Any]]
 
@@ -48,13 +49,33 @@ def extract_file(file_bytes: bytes, ext: str, doc_type_override: Optional[str] =
     """Extract using auto-classification (or an explicit override).
 
     Returns (extracted_dict, resolved_doc_type, confidence).
+
+    Precedence:
+      1. explicit doc_type_override (REGISTRY extractor or template by id)
+      2. hardcoded-form template registry (auto-detect, .docx only)
+      3. generic memo pipeline + keyword classifier (fallback)
     """
     ext = ext.lower()
-    if doc_type_override and doc_type_override in REGISTRY and ext in REGISTRY[doc_type_override]["extensions"]:
-        extracted = REGISTRY[doc_type_override]["extractor"](file_bytes)
-        return extracted, doc_type_override, 1.0
+    if doc_type_override:
+        if doc_type_override in REGISTRY and ext in REGISTRY[doc_type_override]["extensions"]:
+            extracted = REGISTRY[doc_type_override]["extractor"](file_bytes)
+            return extracted, doc_type_override, 1.0
+        spec = template_registry.get_spec(doc_type_override)
+        if spec is not None and ext == ".docx":
+            extracted, warnings = template_registry.extract_spec(file_bytes, spec)
+            extracted["_warnings"] = warnings
+            return extracted, doc_type_override, 1.0
+        # unknown override -> fall through to auto-detection
 
-    # Auto: classify then dispatch
+    # Auto: template registry first (fixed forms win over generic heuristics)
+    if ext == ".docx":
+        result = template_registry.try_extract(file_bytes)
+        if result is not None:
+            extracted, doc_type, confidence, warnings = result
+            extracted["_warnings"] = warnings
+            return extracted, doc_type, confidence
+
+    # Fallback: generic pipeline + classifier
     candidate = _memo_extractor_for(ext)(file_bytes)
     doc_type, confidence = classify_document(candidate)
     if doc_type in REGISTRY and ext in REGISTRY[doc_type]["extensions"]:

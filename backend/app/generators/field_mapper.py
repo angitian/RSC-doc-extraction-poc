@@ -40,21 +40,27 @@ def _budget_year(extracted: Dict[str, Any]) -> str:
 # RSC Smart Approval profile
 # ---------------------------------------------------------------------------
 def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
-                        attach_sections: Optional[List[str]] = None) -> List[DOMAction]:
+                        attach_sections: Optional[List[str]] = None,
+                        skip_sections: Optional[List[str]] = None) -> List[DOMAction]:
     """Build mappings for the main RSC form.
 
     attach_sections: sections where the user supplies their own PDF
     ("expense" / "schedule") — those sections switch to "แนบไฟล์ PDF" mode and
     skip the generated tables; other sections keep "สร้างในระบบ" + row filling.
+    skip_sections: sections the user turned OFF — no radio click, no table
+    fill, no file_attach at all (the section is left untouched on the portal).
+    skip wins over attach.
     mode == "annex_pdf" → attach-only (no field fills, both sections upload).
     """
     actions: List[DOMAction] = []
     breakdown = extracted.get("breakdown") or []
     schedule = extracted.get("schedule_activities") or []
     attach_only = mode == "annex_pdf"
+    skip = set(skip_sections or [])
     attach = set(attach_sections or [])
     if attach_only:
         attach = {"expense", "schedule"}
+    attach -= skip  # ปิด section = ไม่แนบไฟล์ด้วย
 
     # ---- Section 1-4: ข้อมูล + เนื้อหา (ข้ามใน attach-only) ----
     if not attach_only:
@@ -125,8 +131,11 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
                                  label="วงเงินรวม (บาท)", key="budget_amount"))
 
     # ---- Section 5: เอกสารประกอบ (per-section attach) ----
-    # expense: มี PDF -> radio "แนบไฟล์ PDF" (upload); ไม่มี -> "สร้างในระบบ" + กรอกตาราง
-    if "expense" in attach:
+    # expense: ปิด -> ข้ามทั้ง section (ไม่แตะ radio/ตาราง); มี PDF -> "แนบไฟล์ PDF";
+    #          ปกติ -> "สร้างในระบบ" + กรอกตาราง
+    if "expense" in skip:
+        pass  # ผู้ใช้ปิด — ไม่ generate action ของ section นี้เลย
+    elif "expense" in attach:
         actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
                              meta={"scope_name": "expense-document-source"}))
     else:
@@ -175,8 +184,10 @@ def _build_rsc_mappings(extracted: Dict[str, Any], mode: str,
                 actions.append(_act("#expense-loan-0", "set_value", amt0))
             actions.append(_act("#generated-expense-notes", "set_value", "ขอถัวเฉลี่ยทุกรายการ", label="หมายเหตุ"))
 
-    # schedule: มี PDF -> upload; ไม่มี -> "สร้างในระบบ" + กรอกตาราง
-    if "schedule" in attach:
+    # schedule: ปิด -> ข้ามทั้ง section; มี PDF -> upload; ไม่มี -> "สร้างในระบบ"
+    if "schedule" in skip:
+        pass  # ผู้ใช้ปิด — ไม่ generate action ของ section นี้เลย
+    elif "schedule" in attach:
         actions.append(_act("", "click", delay_ms=300, label="แนบไฟล์ PDF",
                              meta={"scope_name": "schedule-document-source"}))
     else:
@@ -377,13 +388,16 @@ def _build_json_mappings(profile: Dict[str, Any], extracted: Dict[str, Any], mod
 def build_field_mappings(extracted: Dict[str, Any], mode: str, target_url: str,
                          page_snapshot: Optional[list] = None,
                          force_profile_id: Optional[str] = None,
-                         attach_sections: Optional[List[str]] = None) -> Tuple[List[DOMAction], List[str], Dict[str, Any]]:
+                         attach_sections: Optional[List[str]] = None,
+                         skip_sections: Optional[List[str]] = None) -> Tuple[List[DOMAction], List[str], Dict[str, Any]]:
     """Build DOMAction list for the target page.
 
     force_profile_id: เลือก profile ตรงๆ (ไม่ resolve จาก URL/snapshot) —
     ใช้กับ /api/v1/fill ที่ผู้ใช้/หน้าเว็บระบุฟอร์มชัดเจนแล้ว.
     attach_sections: ["expense"|"schedule"] — section ที่ผู้ใช้แนบ PDF เอง
     (สลับเป็นโหมด upload + ข้ามการกรอกตาราง).
+    skip_sections: ["expense"|"schedule"] — section ที่ผู้ใช้ปิด ไม่แตะเลย
+    (ไม่กด radio ไม่กรอกตาราง ไม่แนบไฟล์) — ชนะ attach_sections.
 
     Returns (mappings, warnings, info) where info carries profile_id,
     form_type, page_match_confidence and editable_fields (for the review card).
@@ -411,17 +425,22 @@ def build_field_mappings(extracted: Dict[str, Any], mode: str, target_url: str,
     })
 
     builder_name = profile.get("builder")
+    skip = set(skip_sections or [])
     if builder_name:
-        mappings = BUILDERS[builder_name](extracted, mode, attach_sections)
+        mappings = BUILDERS[builder_name](extracted, mode, attach_sections, skip_sections)
         editable = _collect_editable_from_built(mappings)
     else:
         mappings, editable = _build_json_mappings(profile, extracted, mode)
     info["editable_fields"] = editable
 
     warnings = []
-    if not (extracted.get("breakdown") or []) and mode == "full_table" and profile.get("builder") == "rsc_main":
+    if "expense" in skip and (extracted.get("breakdown") or []):
+        warnings.append(f"ข้ามการกรอกตารางค่าใช้จ่าย (ปิดใช้งาน) — เอกสารมี {len(extracted.get('breakdown') or [])} รายการ")
+    if "schedule" in skip and (extracted.get("schedule_activities") or []):
+        warnings.append("ข้ามการกรอกตารางกำหนดการ (ปิดใช้งาน) — เอกสารมีกำหนดการ")
+    if not (extracted.get("breakdown") or []) and mode == "full_table" and profile.get("builder") == "rsc_main" and "expense" not in skip:
         warnings.append("ไม่พบตารางค่าใช้จ่ายในเอกสาร — ตารางค่าใช้จ่ายจะว่าง")
-    if not (extracted.get("schedule_activities") or []) and mode == "full_table" and profile.get("builder") == "rsc_main":
+    if not (extracted.get("schedule_activities") or []) and mode == "full_table" and profile.get("builder") == "rsc_main" and "schedule" not in skip:
         warnings.append("ไม่พบตารางกำหนดการในเอกสาร — ตารางกำหนดการจะว่าง")
     if profile.get("profile_id") == "rsc_conference" and int(extracted.get("traveler_count") or 1) > 1:
         warnings.append("มีผู้ร่วมเดินทาง >1 คน — ระบบเพิ่มแถวให้แล้ว แต่ช่องกรอกชื่อต้องยืนยันด้วยปุ่ม 'จับฟอร์ม' ครั้งแรก")

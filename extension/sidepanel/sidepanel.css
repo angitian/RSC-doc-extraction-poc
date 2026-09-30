@@ -94,6 +94,39 @@ input[type="url"], input[type="text"] {
 .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
 .hint.ok { color: var(--green); font-weight: 600; }
 
+/* Section on/off toggles (ค่าใช้จ่าย / กำหนดการ) */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  min-height: 44px; /* WCAG touch target */
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border);
+}
+.toggle-row:last-of-type { border-bottom: none; }
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle-label { font-size: 13px; flex: 1; }
+.toggle-state {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green-bg, #e6f6ec);
+  color: var(--green);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.toggle-row input:not(:checked) ~ .toggle-state {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 /* Drop zone */
 .drop-zone {
   border: 2px dashed #94a3b8;

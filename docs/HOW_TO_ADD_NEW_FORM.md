@@ -10,6 +10,50 @@ conference_extractor.py  ──►  rsc_conference.json
 (โค้ดสกัดเฉพาะ)             (profile: ฟิลด์ + mapping)
 ```
 
+## ฟอร์ม hardcode แบบ template-anchored (วิธียอดนิยมใหม่)
+
+ฟอร์มที่มีโครงสร้างตายตัว (เช่น บันทึกข้อความ RSC) **ไม่ต้องเขียน extractor** —
+วาง blank template + manifest แล้วระบุ rule สกัด:
+
+```
+backend/templates/
+  บันทึกข้อความ_rsc_blank.docx   ← ฟอร์มต้นฉบับ (ช่องตัวแปร mark ด้วย {{key}})
+  rsc_memo.json                  ← manifest (anchors + field rules)
+        │
+        ▼
+template_registry.try_extract() ──► template_engine.extract_rules()
+(เลือก template ที่ match ดีสุด)    (ตัดคำ hardcode ออก เหลือค่าตัวแปร)
+        │
+        ▼
+   extracted dict เดิม ──► rollup / field_mappings (ไม่ต้องแก้)
+```
+
+**ขั้นตอนเพิ่มฟอร์ม hardcode ใหม่:**
+
+1. **วาง blank .docx** ใน `backend/templates/` — ข้อความตายตัวของฟอร์ม = hardcode;
+   ช่องที่กรอกได้ = `{{field_key}}` (ทำ marker นี้ให้ครบทุก key ใน rules)
+2. **สร้าง manifest** `<template_id>.json`:
+   - `required_anchors` = วลีที่ฟอร์มนี้ต้องมีเสมอ (ใช้แยกชนิดเอกสาร;
+     อย่าใช้วลีร่วมกับฟอร์มอื่น เช่น "ประมาณการค่าใช้จ่าย" มีทั้ง conference และ memo)
+   - `optional_anchors` + `optional_threshold` = คะแนน coverage สำหรับตรวจจับ
+   - `defaults` = ค่าคงที่ของฟอร์ม (เช่น `action_verb`)
+   - `fields` = field rules:
+     - `line_regex` — regex กับแต่ละย่อหน้า (named groups → keys)
+     - `line_startswith` — ย่อหน้าที่ขึ้นต้นด้วยคำที่กำหนด แล้ว regex
+     - `fulltext_regex` — regex กับข้อความทั้งฉบับ
+     - `prefix_cut` — ตัด boilerplate หน้าข้อความออก (เช่น "ตามที่...ได้ดำเนินงาน {context}")
+     - `special` — `requester_signature` / `requester_position` (ชื่อในวงเล็บหลัง "จึงเรียนมา")
+   - ตัวเลือก `only_if_empty: true` = fallback (ไม่ทับค่าที่ capture ได้แล้ว)
+3. **generate template** ด้วยสคริปต์ (เช่น `tests/make_memo_template.py`) —
+   commit ไฟล์ .docx ที่สร้างด้วย
+4. **ทดสอบ** `python tests/test_template_engine.py` (เพิ่ม assertions ของฟอร์มใหม่)
+
+**กติกาการเขียน rule:**
+- anchor ภาษาไทยต้องระบุขอบเขตชัด; อย่าใช้ token-diff แบบคลุมเครือ
+- `ณ` ต้องใช้ `(?<!\S)ณ(?!\S)` — ตัวอักษร "ณ" ซ่อนในคำไทย (คุณภาพ/คุณ/ณัฐ)
+- ค่าที่เป็นข้อความบรรยายยาว (เช่น context) ให้เก็บทั้งช่วง อย่าตัดกลางคำ
+- field ที่ไม่รู้จัก/ambiguous → ปล่อยว่าง + warning (ห้ามเดาค่า)
+
 ## กรณี 1: เอกสารรูปแบบใหม่ (ต้องมี extractor ใหม่)
 
 1. **สร้าง `backend/app/extraction/<ชื่อ>_extractor.py`** — สกัดจากเอกสารแล้วคืน dict ปกติ

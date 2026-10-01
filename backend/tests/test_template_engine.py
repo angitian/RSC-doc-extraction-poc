@@ -97,6 +97,14 @@ def test_internals():
            str([d.day for d in d3]))
     d4 = _parse_schedule_dates("")
     _check("empty schedule -> []", d4 == [])
+    # tolerant: ช่วงวันที่แทรกในข้อความปน (หน่วยกลุ่มเป้าหมาย "โรงเรือน" + ข้อความต่อท้าย)
+    d5 = _parse_schedule_dates("1-31 ตุลาคม 2569 โดยมีกลุ่มเป้าหมายประกอบด้วย จำนวน 1 โรงเรือน ในการซ่อมแซมหลังคาโรงเรือน")
+    _check("tolerant range in polluted text",
+           len(d5) == 2 and d5[0].day == 1 and d5[1].day == 31, str(d5))
+    # เลขปีต้องไม่ถูกจับเป็นวัน ("2569 ถึง" -> 69 ไม่ได้)
+    d6 = _parse_schedule_dates("15 สิงหาคม 2569 ถึงวันที่ 20 สิงหาคม 2569")
+    _check("wordy range still works (no year false-positive)",
+           len(d6) == 2 and d6[0].day == 15 and d6[1].day == 20, str(d6))
 
     ext = postprocess({"doc_date": "1 ตุลาคม 2569", "doc_number": "7608.8/",
                        "budget_amount": "23,350", "location_name": "ศูนย์ X ต.บาง อ.เมือง จ.เชียงใหม่",
@@ -137,8 +145,15 @@ def test_memo_analyze():
     _check("action_details", "วิเคราะห์สาร" in ext.get("action_details", ""), ext.get("action_details", "")[:60])
     _check("objective", "เพื่อให้สามารถวิเคราะห์สารเคมี" in ext.get("project_objective", ""),
            ext.get("project_objective", "")[:60])
-    _check("context cut hardcode", "ในด้านการคุณภาพผลผลิตผักสลัด" in ext.get("project_context", ""),
-           ext.get("project_context", "")[:50])
+    ctx = ext.get("project_context", "")
+    # portal ต้องกรอก prefix เอง (ไม่ auto สร้าง) → ต้องเก็บเต็มย่อหน้าตั้งแต่ "ตามที่"
+    _check("context keeps full ตามที่ paragraph",
+           ctx.startswith("ตามที่ศูนย์ส่งเสริมและสนับสนุนมูลนิธิโครงการหลวง")
+           and "ในด้านการคุณภาพผลผลิตผักสลัด" in ctx,
+           ctx[:80])
+    _check("objective still cuts ในการนี้ prefix",
+           not ext.get("project_objective", "").startswith("ในการนี้"),
+           ext.get("project_objective", "")[:40])
     _check("schedule", ext.get("schedule_text") == "1-31 ตุลาคม 2569", ext.get("schedule_text", ""))
     _check("schedule range", ext.get("start_date_iso") == "2026-10-01" and ext.get("end_date_iso") == "2026-10-31",
            f"{ext.get('start_date_iso')}..{ext.get('end_date_iso')}")
@@ -169,6 +184,10 @@ def test_memo_electric():
     _check("province", ext.get("province_name") == "เชียงใหม่", ext.get("province_name", ""))
     _check("no breakdown section -> empty", not ext.get("breakdown"))
     _check("no schedule -> empty", not ext.get("schedule_activities"))
+    _check("context keeps full ตามที่ paragraph",
+           ext.get("project_context", "").startswith("ตามที่ศูนย์ส่งเสริม")
+           and "วิจัยและพัฒนาการผลิตสตรอว์เบอร์รี่" in ext.get("project_context", ""),
+           ext.get("project_context", "")[:80])
     # ไม่เติม field ว่างจากการเดา
     _check("no fabricated schedule_text", not ext.get("schedule_text"))
 
@@ -188,6 +207,10 @@ def test_memo_trip():
     _check("budget", ext.get("budget_amount") == "21200", ext.get("budget_amount", ""))
     _check("requester", ext.get("requester_name") == "นายรณกร อำพันธ์ศรี", ext.get("requester_name", ""))
     _check("location", "ศูนย์พัฒนาโครงการหลวงแม่แฮ" in ext.get("location_name", ""), ext.get("location_name", ""))
+    _check("context keeps full ตามที่ paragraph",
+           ext.get("project_context", "").startswith("ตามที่ศูนย์ส่งเสริม")
+           and "วิจัยด้านโรงเรือนควบคุมสภาพแวดล้อม" in ext.get("project_context", ""),
+           ext.get("project_context", "")[:80])
 
 
 def test_memo_iec():
@@ -203,6 +226,10 @@ def test_memo_iec():
     _check("requester", ext.get("requester_name") == "นายรณกร อำพันธ์ศรี", ext.get("requester_name", ""))
     _check("อ้างถึง line does not break extraction", ext.get("doc_number_tail") == "7608.8/68",
            ext.get("doc_number_tail", ""))
+    _check("context keeps full ตามที่ (ได้รับงบประมาณ variant)",
+           ext.get("project_context", "").startswith("ตามที่ศูนย์ส่งเสริม")
+           and "ได้รับงบประมาณ" in ext.get("project_context", ""),
+           ext.get("project_context", "")[:80])
 
 
 def test_sample_memo():
@@ -215,6 +242,38 @@ def test_sample_memo():
            ext.get("requester_name") == "นายรณกร อำพันธ์ศรี" and ext.get("requester_position") == "วิศวกร",
            f"{ext.get('requester_name')} / {ext.get('requester_position')}")
     _check("budget", ext.get("budget_amount") == "21200", ext.get("budget_amount", ""))
+
+
+def test_memo_reenhouse_style():
+    """Synthetic regression for the 'ซ่อมหลังคาโรงเรือน' memo: target-group unit
+    'โรงเรือน' + trailing text after the clause must NOT swallow schedule_text —
+    'ระหว่างวันที่ 1-31 ตุลาคม 2569' ต้องถูกสกัดเป็นวันที่ได้ (portal ไม่ auto กรอก)."""
+    print("memo synthetic (โรงเรือน + ข้อความต่อท้าย)")
+    spec = get_spec("rsc_memo")
+    paras = [
+        "ส่วนงาน ศูนย์ส่งเสริมและสนับสนุนมูลนิธิโครงการหลวงและโครงการตามพระราชดำริ โทร 053-218618",
+        "ที่ อว. 7608.8/ วันที่ 30 กันยายน 2569",
+        "เรื่อง ขออนุมัติค่าใช้จ่ายในการปรับปรุงโรงเรือนกระตุ้นตาดอกสตรอว์เบอร์รี ศูนย์พัฒนาโครงการหลวงแม่แฮ",
+        "ตามที่ศูนย์ส่งเสริมและสนับสนุนมูลนิธิโครงการหลวงและโครงการตามพระราชดำริ ได้ดำเนินงาน ร่วมกับมูลนิธิโครงการหลวง",
+        "ดังนั้น เพื่อให้โรงเรือนกระตุ้นตาดอกสามารถใช้งานได้ตามปกติ ข้าพเจ้า นายรณกร อำพันธ์ศรี ตำแหน่งวิศวกร "
+        "ขออนุมัติดำเนินงาน ค่าใช้จ่ายในการปรับปรุงโรงเรือนกระตุ้นตาดอกสตรอว์เบอร์รี ศูนย์พัฒนาโครงการหลวงแม่แฮ "
+        "ณ ศูนย์พัฒนาโครงการหลวงแม่แฮ จังหวัดเชียงใหม่ ระหว่างวันที่ 1-31 ตุลาคม 2569 "
+        "โดยมีกลุ่มเป้าหมายประกอบด้วย จำนวน 1 โรงเรือน ในการซ่อมแซมหลังคาโรงเรือน",
+        "ในการนี้ข้าพเจ้าจึงใคร่ขออนุมัติดำเนินงานตามวัน เวลา และสถานที่ดังกล่าว "
+        "พร้อมทั้งขออนุมัติค่าใช้จ่าย จำนวน 1,600 บาท (หนึ่งพันหกร้อยบาทถ้วน) จากงบประมาณ 4-KTB พัฒนาชุมชน คกล-69",
+        "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติดำเนินงานและอนุมัติงบประมาณ",
+    ]
+    raw, warnings = extract_rules(spec, paras)
+    _check("schedule_text clean (no tail pollution)",
+           raw.get("schedule_text") == "1-31 ตุลาคม 2569", raw.get("schedule_text", ""))
+    _check("target unit โรงเรือน captured",
+           raw.get("target_group_unit") == "โรงเรือน", raw.get("target_group_unit", ""))
+    _check("target qty 1", raw.get("target_group_quantity") == "1", raw.get("target_group_quantity", ""))
+    ext = postprocess(raw, spec.get("defaults") or {})
+    _check("start date from ระหว่างวันที่",
+           ext.get("start_date_iso") == "2026-10-01", ext.get("start_date_iso", ""))
+    _check("end date from ระหว่างวันที่",
+           ext.get("end_date_iso") == "2026-10-31", ext.get("end_date_iso", ""))
 
 
 def test_malformed_rules_do_not_crash():
@@ -260,6 +319,7 @@ def main() -> int:
     test_memo_trip()
     test_memo_iec()
     test_sample_memo()
+    test_memo_reenhouse_style()
     test_malformed_rules_do_not_crash()
     test_conference_regression()
     test_override()

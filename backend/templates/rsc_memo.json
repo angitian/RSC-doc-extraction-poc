@@ -34,13 +34,12 @@
     },
     {
       "key": "project_context",
-      "type": "prefix_cut",
-      "start": "ตามที่",
-      "cut_through": ["ได้ดำเนินงาน", "ได้รับงบประมาณ", "ได้ดำเนินการ"]
+      "type": "line_regex",
+      "pattern": "^(?P<project_context>ตามที่.*)$"
     },
     {
       "type": "line_regex",
-      "pattern": "^ดังนั้น\\s*(?P<project_objective>.*?)\\s*ข้าพเจ้า\\s*(?P<requester_name>.+?)\\s*ตำแหน่ง\\s*(?P<requester_position>.+?)\\s*ขอ[อนุมัติ]*\\s*ดำเนินงาน\\s*(?P<action_details>.+?)(?:(?<!\\S)ณ(?!\\S)\\s*(?P<location_name>.+?)\\s*จังหวัด\\s*(?P<province_name>[^\\s]+))?\\s*ระหว่างวันที่\\s*(?P<schedule_text>.+?)(?:\\s*โดยมีกลุ่มเป้าหมายประกอบด้วย\\s*(?P<target_group_name>.+?)\\s*จำนวน\\s*(?P<target_group_quantity>\\d+)\\s*(?P<target_group_unit>คน|ราย|แห่ง))?$"
+      "pattern": "^ดังนั้น\\s*(?P<project_objective>.*?)\\s*ข้าพเจ้า\\s*(?P<requester_name>.+?)\\s*ตำแหน่ง\\s*(?P<requester_position>.+?)\\s*ขอ[อนุมัติ]*\\s*ดำเนินงาน\\s*(?P<action_details>.+?)(?:(?<!\\S)ณ(?!\\S)\\s*(?P<location_name>.+?)\\s*จังหวัด\\s*(?P<province_name>[^\\s]+))?\\s*ระหว่างวันที่\\s*(?P<schedule_text>.+?)(?=\\s*โดยมี|\\s*$)(?:\\s*โดยมีกลุ่มเป้าหมายประกอบด้วย\\s*(?P<target_group_name>.+?)\\s*จำนวน\\s*(?P<target_group_quantity>\\d+)\\s*(?P<target_group_unit>[^\\s]+))?.*$"
     },
     {
       "key": "project_objective",

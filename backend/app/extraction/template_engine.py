@@ -247,6 +247,15 @@ def _parse_schedule_dates(schedule_text: str) -> List[Any]:
         if days:
             return [d for d in (parse_thai_date(f"{day} {mon} {yr}") for day in days) if d]
 
+    # Tolerant range: "D1-D2 เดือน ปี" embedded in trailing text (capture may be
+    # polluted by clauses after the date, e.g. "... โดยมีกลุ่มเป้าหมายประกอบด้วย ...")
+    # guard day<=31 กัน false positive จากเลขปี (เช่น "2569 ถึง" ต้องไม่จับเป็น "69 ถึง")
+    m = re.search(r"(\d{1,2})\s*(?:[-–ถึง])\s*(\d{1,2})\s+([^\s\d]+)\s+(\d{2,4})", s)
+    if m and int(m.group(1)) <= 31 and int(m.group(2)) <= 31:
+        d1 = parse_thai_date(f"{m.group(1)} {m.group(3)} {m.group(4)}")
+        d2 = parse_thai_date(f"{m.group(2)} {m.group(3)} {m.group(4)}")
+        return [d for d in (d1, d2) if d]
+
     d = parse_thai_date(s)
     return [d] if d else []
 

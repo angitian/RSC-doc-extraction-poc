@@ -41,7 +41,7 @@ template_registry.try_extract() ──► template_engine.extract_rules()
      - `line_regex` — regex กับแต่ละย่อหน้า (named groups → keys)
      - `line_startswith` — ย่อหน้าที่ขึ้นต้นด้วยคำที่กำหนด แล้ว regex
      - `fulltext_regex` — regex กับข้อความทั้งฉบับ
-     - `prefix_cut` — ตัด boilerplate หน้าข้อความออก (เช่น "ตามที่...ได้ดำเนินงาน {context}")
+     - `prefix_cut` — ตัดคำนำหน้าตายตัวหน้าข้อความบรรยาย (start + cut_through)
      - `special` — `requester_signature` / `requester_position` (ชื่อในวงเล็บหลัง "จึงเรียนมา")
    - ตัวเลือก `only_if_empty: true` = fallback (ไม่ทับค่าที่ capture ได้แล้ว)
 3. **generate template** ด้วยสคริปต์ (เช่น `tests/make_memo_template.py`) —
@@ -52,6 +52,9 @@ template_registry.try_extract() ──► template_engine.extract_rules()
 - anchor ภาษาไทยต้องระบุขอบเขตชัด; อย่าใช้ token-diff แบบคลุมเครือ
 - `ณ` ต้องใช้ `(?<!\S)ณ(?!\S)` — ตัวอักษร "ณ" ซ่อนในคำไทย (คุณภาพ/คุณ/ณัฐ)
 - ค่าที่เป็นข้อความบรรยายยาว (เช่น context) ให้เก็บทั้งช่วง อย่าตัดกลางคำ
+- field ที่ portal ต้องกรอกเองทั้งย่อหน้า (เช่น "ที่มาและบริบทของโครงการ" ที่ไม่ auto สร้าง prefix "ตามที่…")
+  ให้ใช้ `line_regex` จับทั้งบรรทัด (`^ตามที่(?P<key>.*)$`) — อย่าตัดคำนำหน้าทิ้ง
+- field ที่ portal auto สร้างส่วนนำหน้าให้ (เช่น objective "ในการนี้…") ให้คงการตัดส่วนนั้นด้วย prefix_cut/line_startswith
 - field ที่ไม่รู้จัก/ambiguous → ปล่อยว่าง + warning (ห้ามเดาค่า)
 
 ## กรณี 1: เอกสารรูปแบบใหม่ (ต้องมี extractor ใหม่)

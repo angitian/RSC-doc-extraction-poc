@@ -5,77 +5,176 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>นโยบายความเป็นส่วนตัว — RSC Doc → Smart Data</title>
 <style>
-  body { font-family: "Segoe UI", "Noto Sans Thai", system-ui, sans-serif; max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; color: #1f2937; line-height: 1.7; }
-  h1 { font-size: 22px; color: #111827; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
-  h2 { font-size: 16px; color: #1e3a8a; margin-top: 28px; }
+  body { font-family: "Segoe UI", "Noto Sans Thai", system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px 16px 48px; color: #1f2937; line-height: 1.75; }
+  h1 { font-size: 24px; color: #111827; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+  h2 { font-size: 17px; color: #1e3a8a; margin-top: 30px; border-left: 4px solid #2563eb; padding-left: 8px; }
+  h3 { font-size: 15px; color: #111827; margin-top: 20px; }
+  ul { padding-left: 22px; }
   li { margin-bottom: 6px; }
-  .eng { margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 14px; color: #374151; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  .eng { margin-top: 48px; border-top: 3px solid #e5e7eb; padding-top: 16px; font-size: 14px; color: #374151; }
+  .meta { color: #6b7280; font-size: 14px; }
 </style>
 </head>
 <body>
 
 <h1>นโยบายความเป็นส่วนตัว (Privacy Policy)</h1>
-<p><strong>RSC Doc → Smart Data</strong> — ส่วนขยาย Chrome<br/>
-อัปเดตล่าสุด: 25 กันยายน 2569</p>
+<p><strong>RSC Doc → Smart Data</strong> — ส่วนขยาย Chrome (Chrome Extension)<br/>
+<span class="meta">อัปเดตล่าสุด: 7 ตุลาคม 2569<br/>
+รหัสรายการ (Chrome Web Store): afbfpkebjgaacbcaehbidpfiniidenem</span></p>
 
 <h2>1. บทนำ</h2>
-<p>ส่วนขยาย Chrome "RSC Doc → Smart Data" พัฒนาเพื่อช่วยบุคลากรในหน่วยงานสกัดข้อมูลจาก
-เอกสารราชการ (.docx / .pdf / .xlsx) แล้วกรอกข้อมูลลงแบบฟอร์มเว็บราชการ
-<code>https://rsc-approval.kmutt.ac.th/</code> โดยอัตโนมัติ</p>
+<p>ส่วนขยาย Chrome "RSC Doc → Smart Data" พัฒนาโดยสถาบันพัฒนาและฝึกอบรมโรงงานต้นแบบ (สรบ.)
+มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี เพื่อช่วยบุคลากรในหน่วยงานสกัดข้อมูลจากเอกสารราชการ
+(.docx / .pdf / .xlsx) แล้วกรอกข้อมูลลงแบบฟอร์มเว็บราชการ <code>https://rsc-approval.kmutt.ac.th/</code>
+โดยอัตโนมัติ นโยบายนี้เปิดเผยโดยละเอียดถึงการเก็บรวบรวม การใช้ การจัดการ การจัดเก็บ และการแชร์
+ข้อมูลทั้งหมดของผู้ใช้ ตลอดจนทุกฝ่ายที่ได้รับข้อมูล ตามนโยบายความเป็นส่วนตัวของ Chrome Web Store</p>
 
-<h2>2. ข้อมูลที่ส่วนขยายจัดการ</h2>
+<h2>2. ข้อมูลที่ส่วนขยายเก็บรวบรวม (Data We Collect)</h2>
+<p>ส่วนขยายเก็บรวบรวมข้อมูลเฉพาะที่จำเป็นต่อการทำงานหลัก (การสกัดเอกสารและการกรอกแบบฟอร์ม) ดังนี้:</p>
+
+<h3>2.1 ไฟล์เอกสารที่ผู้ใช้เลือก (Files &amp; Docs)</h3>
 <ul>
-  <li><strong>ไฟล์เอกสารที่ผู้ใช้เลือก</strong> — ไฟล์ .docx/.pdf/.xlsx ที่ผู้ใช้ลาก/เลือกเข้าในส่วนขยาย เพื่อให้ระบบสกัดข้อมูล (เช่น ชื่อโครงการ, ชื่อ-นามสกุล, ตำแหน่ง, วันที่, วงเงิน/ค่าใช้จ่าย)</li>
-  <li><strong>ข้อมูลที่สกัดได้จากเอกสาร</strong> — ข้อมูลส่วนบุคคลที่ปรากฏในเอกสาร (ชื่อ, ตำแหน่ง, หน่วยงาน) และข้อมูลงบประมาณ/ค่าใช้จ่าย</li>
-  <li><strong>ชื่อไฟล์</strong> และขนาดไฟล์</li>
-  <li><strong>การตั้งค่าภายในเครื่อง</strong> — API URL ที่ผู้ใช้บันทึก (เก็บใน <code>chrome.storage</code> ของเบราว์เซอร์เท่านั้น)</li>
+  <li>ไฟล์ .docx / .pdf / .xlsx ที่ผู้ใช้ลาก/เลือกเข้าในส่วนขยาย — รวมถึง<b>เนื้อหาทั้งหมด</b>ของเอกสาร (ข้อความ, ตาราง, ข้อมูลตัวเลข)</li>
+  <li>ชื่อไฟล์และขนาดไฟล์</li>
 </ul>
 
-<h2>3. การใช้และการส่งข้อมูล</h2>
+<h3>2.2 ข้อมูลส่วนบุคคลที่ปรากฏในเอกสาร (Personal Information)</h3>
 <ul>
-  <li>เอกสารที่ผู้ใช้เลือกจะถูกส่งผ่าน <strong>HTTPS</strong> ไปยังเซิร์ฟเวอร์ประมวลผลของส่วนขยาย (<code>https://rsc-extraction-api.onrender.com</code>) เพื่อทำการสกัดและสร้างคำสั่งกรอกแบบฟอร์ม</li>
-  <li><strong>เซิร์ฟเวอร์ไม่เก็บไฟล์หรือข้อมูลถาวร</strong> — ประมวลผลแบบ stateless แล้วส่งผลกลับมาทันที</li>
-  <li>ข้อมูลที่สกัดได้จะถูกกรอกลงแบบฟอร์มเว็บราชการ <strong>เฉพาะเมื่อผู้ใช้กดปุ่ม "ยิงข้อมูลลงแบบฟอร์ม" เท่านั้น</strong></li>
+  <li>ข้อมูลที่สกัดได้จากเอกสาร เช่น ชื่อ-นามสกุล, ตำแหน่ง, หน่วยงาน, หมายเลขโทรศัพท์ติดต่อ, วันที่ ฯลฯ</li>
+  <li>ข้อมูลเหล่านี้มาจาก<b>เอกสารที่ผู้ใช้เลือกเอง</b> — ส่วนขยายไม่ได้รวบรวมจากแหล่งอื่น</li>
 </ul>
 
-<h2>4. การแชร์ข้อมูล</h2>
+<h3>2.3 ข้อมูลการเงิน/งบประมาณที่อยู่ในเอกสาร (Financial Information)</h3>
 <ul>
-  <li><strong>ไม่มีการขายหรือแชร์ข้อมูลให้บุคคลที่สาม</strong> ในเชิงพาณิชย์</li>
-  <li>ข้อมูลจะถูกส่งไปยังเว็บราชการปลายทาง (<code>rsc-approval.kmutt.ac.th</code>) ตามคำสั่งของผู้ใช้เท่านั้น</li>
-  <li>ไม่มีการส่งข้อมูลไปยัง Google หรือผู้ให้บริการอื่น</li>
+  <li>วงเงิน, ค่าใช้จ่าย, รายการงบประมาณ/บิล ที่ปรากฏในเอกสารที่ผู้ใช้เลือก</li>
 </ul>
 
-<h2>5. การเก็บรักษา</h2>
+<h3>2.4 การตั้งค่าภายในเครื่อง (Settings)</h3>
 <ul>
-  <li>ส่วนขยาย<strong>ไม่จัดเก็บเอกสาร</strong>ในฐานข้อมูลถาวร — ข้อมูลอยู่ในความจำระหว่างการใช้งานครั้งนั้นเท่านั้น</li>
-  <li>การตั้งค่า (API URL) เก็บในเครื่องผู้ใช้ (chrome.storage) — ผู้ใช้ลบได้โดยการล้างข้อมูลส่วนขยาย</li>
+  <li>API URL ที่ผู้ใช้บันทึกไว้ใน <code>chrome.storage</code> ของเบราว์เซอร์ — เก็บในเครื่องผู้ใช้เท่านั้น ไม่มีการส่งออก</li>
 </ul>
 
-<h2>6. ความปลอดภัย</h2>
+<h3>2.5 ข้อมูลทางเทคนิคของคำขอ (Technical / Server Logs)</h3>
 <ul>
-  <li>การรับ-ส่งทั้งหมดผ่าน HTTPS</li>
-  <li>ส่วนขยายไม่มีการรันโค้ดจากภายนอก (no remote code)</li>
-  <li>ขอสิทธิ์เฉพาะที่จำเป็นต่อการทำงาน (ดูรายการสิทธิ์ใน Chrome Web Store)</li>
+  <li>เมื่อผู้ใช้ส่งเอกสารเพื่อสกัด เซิร์ฟเวอร์ประมวลผลอาจบันทึก metadata มาตรฐานของคำขอ เช่น เวลา, ที่อยู่ IP, ขนาดคำขอ ตามแนวปฏิบัติทั่วไปของผู้ให้บริการโฮสติ้ง (ดูข้อ 4.2) — ใช้เพื่อความปลอดภัย/เสถียรภาพเท่านั้น ไม่ใช้ระบุตัวบุคคล</li>
 </ul>
 
-<h2>7. สิทธิ์ของผู้ใช้</h2>
+<h2>3. วิธีที่ส่วนขยายใช้ข้อมูล (How We Use Data)</h2>
 <ul>
-  <li>ผู้ใช้สามารถ<strong>ถอนสิทธิ์/ลบส่วนขยาย</strong>ได้ทุกเมื่อผ่านการตั้งค่า Chrome</li>
-  <li>ผู้ใช้สามารถเลือกไฟล์/กดยิงข้อมูลได้เองทุกครั้ง — ไม่มีการทำงานอัตโนมัติโดยไม่ได้รับความยินยอม</li>
+  <li><b>การสกัดข้อมูล:</b> เอกสารที่ผู้ใช้เลือกถูกส่งผ่าน <b>HTTPS</b> ไปยังเซิร์ฟเวอร์ประมวลผลของส่วนขยาย (<code>https://rsc-extraction-api.onrender.com</code>) เพื่อแปลงเป็นข้อมูลโครงสร้าง (ชื่อโครงการ, ผู้ขอ, วันที่, วงเงิน, รายการค่าใช้จ่าย ฯลฯ)</li>
+  <li><b>การแสดงผล:</b> ผลการสกัดถูกส่งกลับมาแสดงใน Review Card เพื่อให้ผู้ใช้ตรวจสอบ/แก้ไข</li>
+  <li><b>การกรอกแบบฟอร์ม:</b> ข้อมูลที่สกัดได้ถูกกรอกลงแบบฟอร์มเว็บราชการ <b>เฉพาะเมื่อผู้ใช้กดปุ่ม "ยิงข้อมูลลงแบบฟอร์ม" เท่านั้น</b> — ไม่มีการส่งอัตโนมัติโดยไม่ได้รับความยินยอม</li>
+  <li><b>การตั้งค่า:</b> API URL ใช้สำหรับเชื่อมต่อเซิร์ฟเวอร์เท่านั้น</li>
 </ul>
 
-<h2>8. การติดต่อ</h2>
-<p>หากมีข้อสงสัยเกี่ยวกับนโยบายนี้ หรือต้องการขอให้ลบข้อมูล ติดต่อหน่วยงานผู้ดูแลระบบ:<br/>
-<strong>หน่วยงาน:</strong> สถาบันพัฒนาและฝึกอบรมโรงงานต้นแบบ (สรบ.) มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี</p>
+<h2>4. การแชร์ข้อมูล และทุกฝ่ายที่ได้รับข้อมูล (Data Sharing &amp; Every Recipient)</h2>
+<p>ข้อมูลผู้ใช้จะถูกส่งไปยังฝ่ายต่อไปนี้<b>เท่านั้น</b> ตามความจำเป็นในการทำงาน:</p>
+
+<table style="width:100%; border-collapse:collapse; margin:10px 0;">
+  <tr style="background:#eff6ff;">
+    <th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">ฝ่ายที่ได้รับข้อมูล</th>
+    <th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">ข้อมูลที่ได้รับ</th>
+    <th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">วัตถุประสงค์</th>
+  </tr>
+  <tr>
+    <td style="border:1px solid #cbd5e1; padding:8px;">① เซิร์ฟเวอร์ประมวลผลของส่วนขยาย<br/>(rsc-extraction-api.onrender.com)</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">เอกสารที่ผู้ใช้เลือก + ข้อมูลที่สกัดได้</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">ประมวลผลการสกัด (ชั่วคราว — ไม่เก็บถาวร)</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #cbd5e1; padding:8px;">② Render.com — ผู้ให้บริการคลาวด์ที่โฮสต์เซิร์ฟเวอร์</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">Metadata ของคำขอ (เวลา/IP/ขนาด) ตาม standard server logs</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">โครงสร้างพื้นฐานการโฮสต์/ความปลอดภัย</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #cbd5e1; padding:8px;">③ เว็บราชการปลายทาง<br/>(rsc-approval.kmutt.ac.th)</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">ข้อมูลที่สกัดได้ (เมื่อผู้ใช้กดยิง)</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">กรอกแบบฟอร์มตามคำสั่งของผู้ใช้</td>
+  </tr>
+  <tr>
+    <td style="border:1px solid #cbd5e1; padding:8px;">④ เบราว์เซอร์/เครื่องของผู้ใช้</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">การตั้งค่า API URL (chrome.storage)</td>
+    <td style="border:1px solid #cbd5e1; padding:8px;">เก็บในเครื่องเท่านั้น</td>
+  </tr>
+</table>
+
+<p><b>การยืนยัน:</b> นอกเหนือจาก 4 ฝ่ายข้างต้น <b>ไม่มีบุคคล หน่วยงาน หรือบริษัทอื่นใดได้รับข้อมูลผู้ใช้</b> —
+ไม่มีการขายข้อมูล, ไม่มีการแชร์เชิงพาณิชย์, ไม่มี analytics/advertising SDK ของบุคคลที่สาม,
+และไม่มีการส่งข้อมูลไปยัง Google (นอกเหนือจากพฤติกรรมมาตรฐานของ Chrome Web Store)</p>
+
+<h2>5. การจัดการและการจัดเก็บข้อมูล (Handling &amp; Storage)</h2>
+<ul>
+  <li><b>ฝั่งเซิร์ฟเวอร์:</b> ประมวลผลแบบ <b>stateless</b> — เอกสารและข้อมูลถูกใช้ในหน่วยความจำระหว่างประมวลผลแล้วทิ้งทันที; <b>ไม่มีฐานข้อมูลถาวร ไม่มีการเก็บไฟล์</b></li>
+  <li><b>ฝั่งเครื่องผู้ใช้:</b> chrome.storage เก็บเฉพาะการตั้งค่า API URL (ลบได้โดยล้างข้อมูลส่วนขยาย); ข้อมูลที่สกัดได้อยู่ในความจำของหน้า side panel ระหว่างใช้งานเท่านั้น</li>
+  <li><b>Server logs:</b> จำกัดเฉพาะ metadata มาตรฐานของ hosting (ข้อ 2.5) และไม่ใช้ระบุตัวบุคคล</li>
+</ul>
+
+<h2>6. ข้อมูลที่ส่วนขยายไม่เก็บ (Data We Do NOT Collect)</h2>
+<ul>
+  <li>❌ ไม่เก็บ cookies / ไม่ติดตามพฤติกรรม / ไม่มี analytics</li>
+  <li>❌ ไม่เก็บรหัสผ่าน / ข้อมูลการเข้าสู่ระบบ / authentication tokens ของผู้ใช้</li>
+  <li>❌ ไม่เก็บประวัติการท่องเว็บ / ไม่เก็บตำแหน่ง (location)</li>
+  <li>❌ ไม่เก็บข้อมูลติดต่อ (address book) / ไม่อ่านอีเมล / ไม่มีโฆษณา</li>
+  <li>❌ ไม่เก็บข้อมูลของเด็ก (ข้อมูลที่ไม่ได้มาจากเอกสารที่ผู้ใช้เลือกเอง)</li>
+</ul>
+
+<h2>7. ความปลอดภัย (Security)</h2>
+<ul>
+  <li>การรับ-ส่งข้อมูลทั้งหมดผ่าน <b>HTTPS</b> (TLS)</li>
+  <li>ส่วนขยายไม่มี remote code — ไม่มีการโหลด/รันโค้ดจากภายนอก</li>
+  <li>ขอสิทธิ์ (permissions) เฉพาะที่จำเป็นต่อการทำงานเท่านั้น</li>
+</ul>
+
+<h2>8. สิทธิ์ของผู้ใช้ (User Rights &amp; Choices)</h2>
+<ul>
+  <li>ผู้ใช้สามารถ<b>ถอนสิทธิ์/ลบส่วนขยาย</b>ได้ทุกเมื่อผ่านการตั้งค่า Chrome</li>
+  <li>การสกัดและการยิงข้อมูลเป็น<b>การกระทำของผู้ใช้เองทุกครั้ง</b> — ไม่มีกระบวนการอัตโนมัติที่ทำงานโดยไม่ได้รับความยินยอม</li>
+  <li>ผู้ใช้สามารถล้างข้อมูลการตั้งค่าที่เก็บในเครื่องได้โดยล้างข้อมูลของส่วนขยาย</li>
+</ul>
+
+<h2>9. การติดต่อ (Contact)</h2>
+<p>หากมีคำถามเกี่ยวกับนโยบายนี้ หรือต้องการขอให้ลบ/ตรวจสอบข้อมูล ติดต่อ:<br/>
+<strong>สถาบันพัฒนาและฝึกอบรมโรงงานต้นแบบ (สรบ.) มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี</strong><br/>
+(ติดต่อผ่านผู้ดูแลระบบของส่วนขยายในหน่วยงาน)</p>
+
+<hr/>
 
 <div class="eng">
-<h2>English Summary</h2>
-<p><strong>Data handled:</strong> document files (.docx/.pdf/.xlsx) the user chooses, data extracted from them (names, positions, dates, amounts), filenames, and local settings (API URL stored only in browser chrome.storage).</p>
-<p><strong>How data is used:</strong> documents are sent over <strong>HTTPS</strong> to the extension's processing server (<code>https://rsc-extraction-api.onrender.com</code>) for extraction — the server is <strong>stateless, no persistent storage</strong>. Extracted data is submitted to the government portal (<code>https://rsc-approval.kmutt.ac.th/</code>) <strong>only when the user clicks the fill button</strong>.</p>
-<p><strong>Sharing:</strong> no sale or sharing to third parties. Data is sent only to the government portal per user action.</p>
-<p><strong>Security &amp; retention:</strong> all communication over HTTPS; no remote code; no persistent document storage.</p>
-<p><strong>User rights:</strong> the extension can be uninstalled at any time; all actions are user-initiated.</p>
-<p><strong>Contact:</strong> RSC office, King Mongkut's University of Technology Thonburi (KMUTT).</p>
+<h2>English Summary (Complete)</h2>
+<p><strong>RSC Doc → Smart Data</strong> is a Chrome extension by the RSC office, King Mongkut's University of Technology Thonburi (KMUTT), that extracts data from government documents (.docx/.pdf/.xlsx) chosen by the user and auto-fills the government portal form at <code>https://rsc-approval.kmutt.ac.th/</code>.</p>
+
+<h3>Data Collected</h3>
+<ul>
+  <li><strong>Files &amp; Docs:</strong> the full content of document files the user selects, plus filenames/sizes.</li>
+  <li><strong>Personal Information:</strong> data extracted from those documents (names, positions, departments, phone numbers, dates).</li>
+  <li><strong>Financial Information:</strong> amounts/budgets/expense items contained in the selected documents.</li>
+  <li><strong>Settings:</strong> API URL stored only in the user's browser <code>chrome.storage</code> (never transmitted).</li>
+  <li><strong>Technical data:</strong> standard server request metadata (time/IP/size) as hosting infrastructure logs.</li>
+</ul>
+
+<h3>How Data Is Used</h3>
+<p>Documents are sent over <strong>HTTPS</strong> to the extension's processing server
+(<code>https://rsc-extraction-api.onrender.com</code>) for extraction. Results are shown to the user for review,
+and are submitted to the government portal <strong>only when the user clicks the fill button</strong>.</p>
+
+<h3>Every Party That Receives User Data</h3>
+<ul>
+  <li>① The extension's processing server (rsc-extraction-api.onrender.com) — receives documents for transient extraction.</li>
+  <li>② Render.com — the cloud provider hosting the server; sees standard request metadata only.</li>
+  <li>③ The government portal (rsc-approval.kmutt.ac.th) — receives extracted data when the user clicks fill.</li>
+  <li>④ The user's own browser/device — stores the API URL setting locally.</li>
+</ul>
+<p><strong>No other party receives user data.</strong> No sale, no commercial sharing, no third-party analytics/ad SDKs, no data sent to Google beyond standard Chrome Web Store behavior.</p>
+
+<h3>Storage &amp; Retention</h3>
+<p>Server processing is <strong>stateless</strong> — documents are used in memory and discarded; there is <strong>no persistent database or file storage</strong>. Local settings are limited to chrome.storage. Server logs contain standard hosting metadata only and are not used to identify individuals.</p>
+
+<h3>Data NOT Collected</h3>
+<p>No cookies, no tracking, no analytics, no passwords/authentication tokens, no web history, no location, no contacts/email, no advertising, no children's data.</p>
+
+<h3>Security / Rights / Contact</h3>
+<p>All communication over HTTPS; no remote code; minimal permissions. Users may uninstall at any time; all actions are user-initiated. Contact: RSC office, KMUTT.</p>
 </div>
 
 </body>

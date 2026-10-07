@@ -1,79 +1,43 @@
 # นโยบายความเป็นส่วนตัว (Privacy Policy) — RSC Doc → Smart Data
 
-_อัปเดตล่าสุด: 23 กันยายน 2569_
+> ฉบับออนไลน์ (ใช้กับ Chrome Web Store): **docs/privacy.html** — อัปเดตล่าสุด 7 ตุลาคม 2569
+> รหัสรายการ: afbfpkebjgaacbcaehbidpfiniidenem
 
-## ภาษาไทย
-
-### 1. บทนำ
-ส่วนขยาย Chrome "RSC Doc → Smart Data" (ต่อไปนี้ "ส่วนขยาย") พัฒนาเพื่อช่วยบุคลากรในหน่วยงาน
-สกัดข้อมูลจากเอกสารราชการ (.docx / .pdf / .xlsx) แล้วกรอกข้อมูลลงแบบฟอร์มเว็บราชการ
+## 1. บทนำ
+ส่วนขยาย Chrome "RSC Doc → Smart Data" พัฒนาโดยสถาบันพัฒนาและฝึกอบรมโรงงานต้นแบบ (สรบ.) มจธ.
+ช่วยบุคลากรสกัดข้อมูลจากเอกสารราชการ (.docx/.pdf/.xlsx) แล้วกรอกลงแบบฟอร์มเว็บราชการ
 `https://rsc-approval.kmutt.ac.th/` โดยอัตโนมัติ
 
-### 2. ข้อมูลที่ส่วนขยายจัดการ
-- **ไฟล์เอกสารที่ผู้ใช้เลือก** — ไฟล์ .docx/.pdf/.xlsx ที่ผู้ใช้ลาก/เลือกเข้าในส่วนขยาย
-  เพื่อให้ระบบสกัดข้อมูล (เช่น ชื่อโครงการ, ชื่อ-นามสกุล, ตำแหน่ง, วันที่, วงเงิน/ค่าใช้จ่าย)
-- **ข้อมูลที่สกัดได้จากเอกสาร** — ข้อมูลส่วนบุคคลที่ปรากฏในเอกสาร (ชื่อ, ตำแหน่ง, หน่วยงาน)
-  และข้อมูลงบประมาณ/ค่าใช้จ่าย
-- **ชื่อไฟล์** และขนาดไฟล์
-- **การตั้งค่าภายในเครื่อง** — API URL ที่ผู้ใช้บันทึก (เก็บใน `chrome.storage` ของเบราว์เซอร์เท่านั้น)
+## 2. ข้อมูลที่เก็บรวบรวม
+- **ไฟล์เอกสารที่ผู้ใช้เลือก** — เนื้อหาทั้งหมดของไฟล์ .docx/.pdf/.xlsx + ชื่อ/ขนาดไฟล์
+- **ข้อมูลส่วนบุคคลที่อยู่ในเอกสาร** — ชื่อ-นามสกุล, ตำแหน่ง, หน่วยงาน, เบอร์โทร, วันที่ (มาจากเอกสารที่ผู้ใช้เลือกเอง)
+- **ข้อมูลการเงิน** — วงเงิน/ค่าใช้จ่าย/บิลที่อยู่ในเอกสาร
+- **การตั้งค่าในเครื่อง** — API URL ใน chrome.storage (ไม่ส่งออก)
+- **Server log (metadata)** — เวลา/IP/ขนาดคำขอ ตามมาตรฐาน hosting
 
-### 3. การใช้และการส่งข้อมูล
-- เอกสารที่ผู้ใช้เลือกจะถูกส่งผ่าน **HTTPS** ไปยังเซิร์ฟเวอร์ประมวลผลของส่วนขยาย
-  (`https://rsc-extraction-api.onrender.com`) เพื่อทำการสกัดและสร้างคำสั่งกรอกแบบฟอร์ม
-- **เซิร์ฟเวอร์ไม่เก็บไฟล์หรือข้อมูลถาวร** — ประมวลผลแบบ stateless แล้วส่งผลกลับมาทันที
-- ข้อมูลที่สกัดได้จะถูกกรอกลงแบบฟอร์มเว็บราชการ **เฉพาะเมื่อผู้ใช้กดปุ่ม "ยิงข้อมูลลงแบบฟอร์ม"** เท่านั้น
+## 3. วิธีใช้ข้อมูล
+ส่งเอกสารผ่าน HTTPS ไปยังเซิร์ฟเวอร์ประมวลผล (`rsc-extraction-api.onrender.com`) เพื่อสกัด →
+แสดง Review Card ให้ตรวจ/แก้ → กรอกฟอร์ม **เฉพาะเมื่อผู้ใช้กด "ยิงข้อมูลลงแบบฟอร์ม"**
 
-### 4. การแชร์ข้อมูล
-- **ไม่มีการขายหรือแชร์ข้อมูลให้บุคคลที่สาม** ในเชิงพาณิชย์
-- ข้อมูลจะถูกส่งไปยังเว็บราชการปลายทาง (`rsc-approval.kmutt.ac.th`) ตามคำสั่งของผู้ใช้เท่านั้น
-- ไม่มีการส่งข้อมูลไปยัง Google หรือผู้ให้บริการอื่น
+## 4. ทุกฝ่ายที่ได้รับข้อมูล (ครบทุกราย)
+| ฝ่าย | ข้อมูล | วัตถุประสงค์ |
+|---|---|---|
+| ① เซิร์ฟเวอร์ประมวลผล (rsc-extraction-api.onrender.com) | เอกสาร + ผลสกัด | สกัด (ชั่วคราว) |
+| ② Render.com (hosting) | metadata ของคำขอ | โครงสร้างพื้นฐาน |
+| ③ เว็บราชการ (rsc-approval.kmutt.ac.th) | ผลสกัด | กรอกฟอร์มตามผู้ใช้สั่ง |
+| ④ เบราว์เซอร์ผู้ใช้ | การตั้งค่า API URL | เก็บในเครื่อง |
 
-### 5. การเก็บรักษา
-- ส่วนขยาย**ไม่จัดเก็บเอกสาร**ในฐานข้อมูลถาวร — ข้อมูลจะอยู่ในความจำระหว่างการใช้งานครั้งนั้นเท่านั้น
-- การตั้งค่า (API URL) เก็บในเครื่องผู้ใช้ (chrome.storage) — ผู้ใช้ลบได้โดยการล้างข้อมูลส่วนขยาย
+**ไม่มีฝ่ายอื่นใดได้รับข้อมูล** — ไม่ขาย/ไม่แชร์เชิงพาณิชย์/ไม่มี analytics/ad SDK
 
-### 6. ความปลอดภัย
-- การรับ-ส่งทั้งหมดผ่าน HTTPS
-- ส่วนขยายไม่มีการรันโค้ดจากภายนอก (no remote code)
-- ขอสิทธิ์เฉพาะที่จำเป็นต่อการทำงาน (ดูรายการสิทธิ์ใน Chrome Web Store)
+## 5. การจัดการและจัดเก็บ
+stateless — เอกสารใช้ในหน่วยความจำแล้วทิ้ง; ไม่มี DB ถาวร; chrome.storage เก็บแค่การตั้งค่า; server logs จำกัด
 
-### 7. สิทธิ์ของผู้ใช้
-- ผู้ใช้สามารถ**ถอนสิทธิ์/ลบส่วนขยาย**ได้ทุกเมื่อผ่านการตั้งค่า Chrome
-- ผู้ใช้สามารถเลือกไฟล์/กดยิงข้อมูลได้เองทุกครั้ง — ไม่มีการทำงานอัตโนมัติโดยไม่ได้รับความยินยอม
+## 6. ข้อมูลที่ไม่เก็บ
+ไม่เก็บ cookies/tracking/analytics, รหัสผ่าน/auth token, ประวัติเว็บ, ตำแหน่ง, ผู้ติดต่อ/อีเมล, โฆษณา, ข้อมูลเด็ก
 
-### 8. การติดต่อ
-หากมีข้อสงสัยเกี่ยวกับนโยบายนี้ หรือต้องการขอให้ลบข้อมูล ติดต่อหน่วยงานผู้ดูแลระบบ:
-- **หน่วยงาน:** สถาบันพัฒนาและฝึกอบรมโรงงานต้นแบบ (สรบ.) มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี
+## 7. ความปลอดภัย / 8. สิทธิ์ผู้ใช้ / 9. ติดต่อ
+HTTPS ทุกรอบ, ไม่มี remote code, ขอสิทธิ์เท่าที่จำเป็น; ลบ extension ได้ทุกเมื่อ, การยิงเป็น action ของผู้ใช้เอง;
+ติดต่อ: สรบ. มจธ. (ผ่านผู้ดูแลระบบ)
 
 ---
-
-## English Summary
-
-### RSC Doc → Smart Data — Chrome Extension Privacy Policy
-
-**Data handled:**
-- Document files (.docx/.pdf/.xlsx) the user chooses to upload for extraction
-- Data extracted from those documents (names, positions, dates, amounts/expenses)
-- Filenames and file sizes
-- Local settings (API URL stored only in the browser's `chrome.storage`)
-
-**How data is used:**
-- Documents are sent over **HTTPS** to the extension's processing server
-  (`https://rsc-extraction-api.onrender.com`) for extraction and form-fill instruction generation
-- The server is **stateless — no files or data are stored persistently**
-- Extracted data is submitted to the government portal
-  (`https://rsc-approval.kmutt.ac.th/`) **only when the user clicks the fill button**
-
-**Sharing:**
-- No sale or sharing of data to third parties for commercial purposes
-- Data is sent only to the government portal per the user's explicit action
-
-**Retention & security:**
-- No persistent storage of documents; all processing is transient
-- All communication over HTTPS; no remote code execution
-
-**User rights:**
-- The extension can be uninstalled/revoked at any time via Chrome settings
-- All fill actions are user-initiated
-
-**Contact:** The unit administrator (RSC office), King Mongkut's University of Technology Thonburi (KMUTT).
+*ฉบับเต็ม (HTML สำหรับเว็บ): `docs/privacy.html`*

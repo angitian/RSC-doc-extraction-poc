@@ -61,6 +61,12 @@ git push space main
 3. อัปโหลด zip → กรอก listing + Privacy Policy URL + ตอบแบบฟอร์ม Data Safety
 4. ตั้ง visibility เป็น **Unlisted** (เฉพาะคนมีลิงก์) สำหรับการแจกภายในหน่วยงาน
 
+**อัปเดตเวอร์ชันใหม่:**
+- **ต้อง bump `version` ใน manifest.json ทุกครั้ง** — Store ปฏิเสธการอัปโหลด version ซ้ำกับที่ publish อยู่
+- ทุกเวอร์ชันใหม่ที่อัปโหลด **ต้องผ่าน review อีกครั้ง** — แต่รอบ update เร็วกว่ารอบแรกมาก
+  (ปกติไม่กี่วัน บางครั้งไม่กี่ชั่วโมง) ยิ่งถ้าไม่เปลี่ยน permissions/privacy disclosures
+- กรอก **"What's new"** (release notes) ตอนอัปโหลดเสมอ
+
 **หมายเหตุสิทธิ์ (host_permissions):** จำกัดเฉพาะ `rsc-approval.kmutt.ac.th`, Render API และ
 localhost (dev) — ถ้าใช้งานกับเว็บราชการ domain อื่น ต้องเพิ่ม domain นั้นใน `manifest.json`
 
